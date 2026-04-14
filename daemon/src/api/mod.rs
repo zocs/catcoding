@@ -1,17 +1,25 @@
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{header, StatusCode},
     response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
+use rust_embed::RustEmbed;
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 
+use crate::cascade::CascadeHandler;
+use crate::rollback::RollbackManager;
 use crate::scheduler::Scheduler;
 use crate::state::{StateManager, Task, TaskStatus};
 use crate::watchdog::Watchdog;
+
+/// 嵌入式 Dashboard 静态文件
+#[derive(RustEmbed)]
+#[folder = "/home/zocs/devs/catcoding/dashboard/dist/"]
+struct DashboardAssets;
 
 /// API 服务器状态
 pub struct ApiState {
@@ -55,7 +63,8 @@ pub fn create_router(state: Arc<ApiState>) -> Router {
         .route("/api/tasks/{id}/status", post(update_task_status))
         .route("/api/command", post(execute_command))
         .route("/api/watchdog", get(watchdog_status))
-        .route("/dashboard", get(dashboard_handler))
+        .route("/dashboard", get(dashboard_index))
+        .route("/dashboard/{*path}", get(dashboard_handler))
         .with_state(state)
 }
 
@@ -253,42 +262,36 @@ async fn execute_command(
     }))
 }
 
-/// Dashboard HTML
-async fn dashboard_handler() -> Html<&'static str> {
-    Html(r#"<!DOCTYPE html>
-<html>
-<head>
-    <title>🐱 CatCoding Dashboard</title>
-    <meta charset="utf-8">
-    <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
-               max-width: 800px; margin: 50px auto; padding: 20px;
-               background: #1a1a2e; color: #eee; }
-        h1 { text-align: center; }
-        .card { background: #16213e; border-radius: 12px; padding: 20px; margin: 20px 0; }
-        .endpoint { background: #0f3460; padding: 8px 12px; border-radius: 6px; 
-                    margin: 5px 0; font-family: monospace; }
-        .motto { text-align: center; font-size: 1.2em; color: #e94560; }
-    </style>
-</head>
-<body>
-    <h1>🐱 CatCoding Dashboard</h1>
-    <p class="motto">让 AI 像猫咪团队一样协作做菜！</p>
-    <div class="card">
-        <h2>📡 API 端点</h2>
-        <div class="endpoint">GET /api/health — 健康检查</div>
-        <div class="endpoint">GET /api/projects — 项目列表</div>
-        <div class="endpoint">GET /api/agents — Agent 列表</div>
-        <div class="endpoint">GET /api/tasks — 任务列表</div>
-        <div class="endpoint">POST /api/tasks — 创建任务</div>
-        <div class="endpoint">POST /api/command — 发送命令</div>
-    </div>
-    <div class="card">
-        <h2>🐾 猫咪团队</h2>
-        <p>🐱 暹罗猫 (PM) · 🐱 英短蓝猫 (Core Dev) · 🐱 橘猫 (Frontend)</p>
-        <p>🐱 缅因猫 (Backend) · 🐱 玄猫 (Review) · 🦉 猫头鹰 (Watchdog)</p>
-    </div>
-    <p style="text-align:center; color:#666;">v0.1.0 — Vue Dashboard 即将到来</p>
-</body>
-</html>"#)
+/// Dashboard 首页
+async fn dashboard_index() -> Response {
+    match DashboardAssets::get("index.html") {
+        Some(content) => Html(content.data.into_owned()).into_response(),
+        None => (StatusCode::NOT_FOUND, "Dashboard not built").into_response(),
+    }
+}
+
+/// 提供 Dashboard 静态文件
+async fn dashboard_handler(Path(path): Path<String>) -> Response {
+    let path = if path.is_empty() { "index.html" } else { &path };
+    
+    match DashboardAssets::get(path) {
+        Some(content) => {
+            let mime = mime_guess::from_path(path)
+                .first_or_octet_stream()
+                .to_string();
+            
+            (
+                StatusCode::OK,
+                [(header::CONTENT_TYPE, mime)],
+                content.data.into_owned(),
+            ).into_response()
+        }
+        None => {
+            // SPA fallback: 返回 index.html
+            match DashboardAssets::get("index.html") {
+                Some(content) => Html(content.data.into_owned()).into_response(),
+                None => (StatusCode::NOT_FOUND, "Dashboard not built").into_response(),
+            }
+        }
+    }
 }

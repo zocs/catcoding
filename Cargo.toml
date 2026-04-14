@@ -20,6 +20,8 @@ chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
 async-nats = "0.39"
 rusqlite = { version = "0.32", features = ["bundled", "serde_json"] }
+rust-embed = "8"
+mime_guess = "2"
 clap = { version = "4", features = ["derive"] }
 futures-util = "0.3"
 md5 = "0.7"
