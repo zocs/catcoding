@@ -5,8 +5,11 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod adapter;
 mod api;
+mod cascade;
 mod db;
 mod ipc;
+mod memory;
+mod rollback;
 mod router;
 mod scheduler;
 mod skin;
@@ -15,6 +18,7 @@ mod watchdog;
 
 use api::ApiState;
 use db::Database;
+use memory::MemoryManager;
 use scheduler::{Scheduler, SchedulerConfig};
 use skin::cats::CatSkin;
 use skin::Skin;
@@ -110,6 +114,16 @@ async fn main() -> Result<()> {
     // Agent 生命周期管理器
     let lifecycle_manager = AgentLifecycleManager::new();
     tracing::info!("🐱 Agent 生命周期管理器已初始化");
+
+    // L4 记忆系统
+    let memory_dir = std::env::var("MEMORY_DIR")
+        .unwrap_or_else(|_| ".catcoding/memory".to_string());
+    let memory_manager = Arc::new(MemoryManager::new(&memory_dir)?);
+    tracing::info!("🧠 L4 记忆系统已初始化: {}", memory_dir);
+    tracing::info!("  L1 索引: {} 行", memory_manager.l1.line_count());
+    tracing::info!("  L2 事实: {} 条", memory_manager.l2.count());
+    tracing::info!("  L3 技能: {} 个", memory_manager.l3.count());
+    tracing::info!("  L4 会话: {} 条", memory_manager.l4.count());
 
     // API 服务器
     let api_state = Arc::new(ApiState {

@@ -22,3 +22,4 @@ async-nats = "0.39"
 rusqlite = { version = "0.32", features = ["bundled", "serde_json"] }
 clap = { version = "4", features = ["derive"] }
 futures-util = "0.3"
+md5 = "0.7"
