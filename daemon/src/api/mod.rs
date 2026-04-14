@@ -1,35 +1,24 @@
 use axum::{
-    extract::State,
+    extract::{Path, State},
     http::StatusCode,
-    response::IntoResponse,
+    response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+
+use crate::scheduler::Scheduler;
+use crate::state::{StateManager, Task, TaskStatus};
+use crate::watchdog::Watchdog;
 
 /// API 服务器状态
 pub struct ApiState {
     pub project_id: String,
-}
-
-/// 项目信息
-#[derive(Serialize)]
-struct ProjectInfo {
-    name: String,
-    version: String,
-    status: String,
-    agents: Vec<AgentStatus>,
-}
-
-#[derive(Serialize)]
-struct AgentStatus {
-    id: String,
-    role: String,
-    status: String,
-    current_task: Option<String>,
+    pub state_manager: Arc<StateManager>,
+    pub scheduler: Arc<Scheduler>,
+    pub watchdog: Arc<Watchdog>,
 }
 
 /// 命令请求
@@ -39,74 +28,216 @@ struct CommandRequest {
     args: Option<Vec<String>>,
 }
 
+/// Watchdog 状态
+async fn watchdog_status(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
+    let summary = state.watchdog.status_summary().await;
+    Json(summary)
+}
+
+/// 创建任务请求
+#[derive(Deserialize)]
+struct CreateTaskRequest {
+    title: String,
+    description: Option<String>,
+    role: Option<String>,
+}
+
 /// 创建 Axum 路由
 pub fn create_router(state: Arc<ApiState>) -> Router {
     Router::new()
         .route("/", get(root_handler))
         .route("/api/health", get(health_handler))
         .route("/api/projects", get(list_projects))
-        .route("/api/projects/:id", get(get_project))
+        .route("/api/projects/{id}", get(get_project))
         .route("/api/agents", get(list_agents))
-        .route("/api/tasks", get(list_tasks))
+        .route("/api/tasks", get(list_tasks).post(create_task))
+        .route("/api/tasks/{id}", get(get_task))
+        .route("/api/tasks/{id}/status", post(update_task_status))
         .route("/api/command", post(execute_command))
+        .route("/api/watchdog", get(watchdog_status))
+        .route("/dashboard", get(dashboard_handler))
         .with_state(state)
 }
 
-/// 根路由 — Dashboard 入口
-async fn root_handler() -> impl IntoResponse {
+/// 根路由
+async fn root_handler(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
+    let agents = state.state_manager.get_project(&state.project_id).await;
+    let agent_count = agents.as_ref().map(|p| p.agents.len()).unwrap_or(0);
+    let task_count = agents.as_ref().map(|p| p.tasks.len()).unwrap_or(0);
+
     Json(json!({
         "name": "CatCoding Daemon",
         "version": env!("CARGO_PKG_VERSION"),
-        "dashboard": "http://localhost:19800",
-        "motto": "🐱 让 AI 像猫咪团队一样协作做菜！"
+        "motto": "🐱 让 AI 像猫咪团队一样协作做菜！",
+        "project": state.project_id,
+        "agents": agent_count,
+        "tasks": task_count,
+        "endpoints": {
+            "health": "/api/health",
+            "projects": "/api/projects",
+            "agents": "/api/agents",
+            "tasks": "/api/tasks",
+            "command": "/api/command",
+            "dashboard": "/dashboard"
+        }
     }))
 }
 
 /// 健康检查
-async fn health_handler() -> impl IntoResponse {
+async fn health_handler(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
     Json(json!({
         "status": "ok",
-        "uptime": "TODO",
-        "memory_mb": "TODO"
+        "version": env!("CARGO_PKG_VERSION"),
+        "project": state.project_id,
+        "uptime": "TODO"
     }))
 }
 
 /// 列出项目
 async fn list_projects(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
-    Json(json!({
-        "projects": [{
-            "id": state.project_id,
-            "name": "当前项目",
-            "status": "active"
-        }]
-    }))
+    let project = state.state_manager.get_project(&state.project_id).await;
+    match project {
+        Some(p) => Json(json!({
+            "projects": [{
+                "id": p.id,
+                "name": p.name,
+                "task_count": p.tasks.len(),
+                "agent_count": p.agents.len()
+            }]
+        })),
+        None => Json(json!({ "projects": [] })),
+    }
 }
 
 /// 获取项目详情
 async fn get_project(
-    State(_state): State<Arc<ApiState>>,
-    axum::extract::Path(id): axum::extract::Path<String>,
-) -> impl IntoResponse {
-    Json(json!({
-        "id": id,
-        "name": "项目",
-        "tasks": [],
-        "agents": []
-    }))
+    State(state): State<Arc<ApiState>>,
+    Path(id): Path<String>,
+) -> Response {
+    match state.state_manager.get_project(&id).await {
+        Some(p) => Json(json!({
+            "id": p.id,
+            "name": p.name,
+            "tasks": p.tasks.values().collect::<Vec<_>>(),
+            "agents": p.agents.values().collect::<Vec<_>>()
+        })).into_response(),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "项目不存在" })),
+        ).into_response(),
+    }
 }
 
 /// 列出 Agent
-async fn list_agents(State(_state): State<Arc<ApiState>>) -> impl IntoResponse {
-    Json(json!({
-        "agents": []
-    }))
+async fn list_agents(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
+    let project = state.state_manager.get_project(&state.project_id).await;
+    let agents: Vec<_> = project
+        .map(|p| p.agents.values().cloned().collect())
+        .unwrap_or_default();
+    Json(json!({ "agents": agents }))
 }
 
 /// 列出任务
-async fn list_tasks(State(_state): State<Arc<ApiState>>) -> impl IntoResponse {
-    Json(json!({
-        "tasks": []
-    }))
+async fn list_tasks(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
+    let project = state.state_manager.get_project(&state.project_id).await;
+    let tasks: Vec<_> = project
+        .map(|p| p.tasks.values().cloned().collect())
+        .unwrap_or_default();
+    Json(json!({ "tasks": tasks }))
+}
+
+/// 获取单个任务
+async fn get_task(
+    State(state): State<Arc<ApiState>>,
+    Path(id): Path<String>,
+) -> Response {
+    let project = state.state_manager.get_project(&state.project_id).await;
+    match project.and_then(|p| p.tasks.get(&id).cloned()) {
+        Some(task) => Json(json!(task)).into_response(),
+        None => (
+            StatusCode::NOT_FOUND,
+            Json(json!({ "error": "任务不存在" })),
+        ).into_response(),
+    }
+}
+
+/// 创建任务
+async fn create_task(
+    State(state): State<Arc<ApiState>>,
+    Json(req): Json<CreateTaskRequest>,
+) -> impl IntoResponse {
+    let task = Task::new(
+        &req.title,
+        req.description.as_deref().unwrap_or(""),
+        req.role.as_deref(),
+    );
+    let task_id = task.id.clone();
+    let title = task.title.clone();
+
+    // 保存到状态管理器
+    let _ = state.state_manager.add_task(&state.project_id, task.clone()).await;
+
+    // 加入调度队列
+    let _ = state.scheduler.enqueue(task).await;
+
+    tracing::info!("📋 创建任务: {} ({})", title, task_id);
+
+    (
+        StatusCode::CREATED,
+        Json(json!({
+            "id": task_id,
+            "title": title,
+            "status": "pending",
+            "message": "任务已创建，等待调度..."
+        })),
+    )
+}
+
+/// 更新任务状态
+async fn update_task_status(
+    State(state): State<Arc<ApiState>>,
+    Path(id): Path<String>,
+    Json(body): Json<serde_json::Value>,
+) -> Response {
+    let status_str = body.get("status")
+        .and_then(|v| v.as_str())
+        .unwrap_or("active");
+
+    let new_status = match status_str {
+        "pending" => TaskStatus::Pending,
+        "blocked" => TaskStatus::Blocked,
+        "ready" => TaskStatus::Ready,
+        "active" => TaskStatus::Active,
+        "reviewing" => TaskStatus::Reviewing,
+        "done" => TaskStatus::Done,
+        "rollbacked" => TaskStatus::Rollbacked,
+        "failed" => TaskStatus::Failed,
+        _ => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({ "error": "无效的状态" })),
+            ).into_response()
+        }
+    };
+
+    match state.state_manager.update_task_status(
+        &state.project_id,
+        &id,
+        new_status.clone(),
+    ).await {
+        Ok(_) => {
+            tracing::info!("📋 任务 {} 状态更新为 {:?}", id, new_status);
+            Json(json!({
+                "id": id,
+                "status": status_str,
+                "message": "状态已更新"
+            })).into_response()
+        }
+        Err(e) => (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            Json(json!({ "error": e.to_string() })),
+        ).into_response(),
+    }
 }
 
 /// 执行命令
@@ -120,4 +251,44 @@ async fn execute_command(
         "command": req.command,
         "message": "命令已接收，正在处理..."
     }))
+}
+
+/// Dashboard HTML
+async fn dashboard_handler() -> Html<&'static str> {
+    Html(r#"<!DOCTYPE html>
+<html>
+<head>
+    <title>🐱 CatCoding Dashboard</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+               max-width: 800px; margin: 50px auto; padding: 20px;
+               background: #1a1a2e; color: #eee; }
+        h1 { text-align: center; }
+        .card { background: #16213e; border-radius: 12px; padding: 20px; margin: 20px 0; }
+        .endpoint { background: #0f3460; padding: 8px 12px; border-radius: 6px; 
+                    margin: 5px 0; font-family: monospace; }
+        .motto { text-align: center; font-size: 1.2em; color: #e94560; }
+    </style>
+</head>
+<body>
+    <h1>🐱 CatCoding Dashboard</h1>
+    <p class="motto">让 AI 像猫咪团队一样协作做菜！</p>
+    <div class="card">
+        <h2>📡 API 端点</h2>
+        <div class="endpoint">GET /api/health — 健康检查</div>
+        <div class="endpoint">GET /api/projects — 项目列表</div>
+        <div class="endpoint">GET /api/agents — Agent 列表</div>
+        <div class="endpoint">GET /api/tasks — 任务列表</div>
+        <div class="endpoint">POST /api/tasks — 创建任务</div>
+        <div class="endpoint">POST /api/command — 发送命令</div>
+    </div>
+    <div class="card">
+        <h2>🐾 猫咪团队</h2>
+        <p>🐱 暹罗猫 (PM) · 🐱 英短蓝猫 (Core Dev) · 🐱 橘猫 (Frontend)</p>
+        <p>🐱 缅因猫 (Backend) · 🐱 玄猫 (Review) · 🦉 猫头鹰 (Watchdog)</p>
+    </div>
+    <p style="text-align:center; color:#666;">v0.1.0 — Vue Dashboard 即将到来</p>
+</body>
+</html>"#)
 }

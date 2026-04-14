@@ -42,9 +42,9 @@ pub struct AgentSlot {
 pub struct Scheduler {
     config: SchedulerConfig,
     /// 待调度任务队列
-    pending_queue: Arc<RwLock<Vec<Task>>>,
+    pub pending_queue: Arc<RwLock<Vec<Task>>>,
     /// 空闲 Agent 列表
-    idle_agents: Arc<RwLock<HashMap<String, AgentSlot>>>,
+    pub idle_agents: Arc<RwLock<HashMap<String, AgentSlot>>>,
 }
 
 impl Scheduler {
@@ -75,14 +75,22 @@ impl Scheduler {
         Ok(())
     }
 
+    /// 获取队列长度
+    pub async fn queue_len(&self) -> usize {
+        self.pending_queue.read().await.len()
+    }
+
+    /// 获取空闲 Agent 数量
+    pub async fn idle_agent_count(&self) -> usize {
+        self.idle_agents.read().await.len()
+    }
+
     /// 检查任务依赖是否全部满足
-    ///
-    /// 硬门控：只要有一个依赖未完成，任务就不分配
-    /// 目的：不浪费 agent token
-    fn check_dependencies(task: &Task, _completed_tasks: &std::collections::HashSet<String>) -> bool {
-        // TODO: 从 StateManager 查询依赖任务状态
-        // 暂时简单处理：无依赖 = 可分配
-        task.depends_on.is_empty()
+    fn check_dependencies(task: &Task, completed: &std::collections::HashSet<String>) -> bool {
+        if task.depends_on.is_empty() {
+            return true;
+        }
+        task.depends_on.iter().all(|dep| completed.contains(dep))
     }
 
     /// 调度一轮：检查队列，分配任务
@@ -96,9 +104,10 @@ impl Scheduler {
         let mut assignments = Vec::new();
         let mut remaining = Vec::new();
 
-        // 获取已完成任务集合（用于依赖检查）
+        // 获取已完成任务集合
         let project = state_manager.get_project(project_id).await;
         let completed: std::collections::HashSet<String> = project
+            .as_ref()
             .map(|p| {
                 p.tasks
                     .iter()
@@ -135,7 +144,7 @@ impl Scheduler {
                     assignments.push((agent.agent_id.clone(), task));
                 }
                 None => {
-                    tracing::debug!("🐱 没有空闲的 {} Agent，任务 {} 等待", assigned_role, task.id);
+                    // 没有对应角色的 Agent，任务留在队列
                     remaining.push(task);
                 }
             }
