@@ -1,0 +1,46 @@
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #app {
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+
+body {
+  background: #0d0d14;
+  color: #eee;
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1e1e2e;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* 猫咪主题色 */
+:root {
+  --cat-primary: #e94560;
+  --cat-secondary: #9b59b6;
+  --cat-success: #2ecc71;
+  --cat-warning: #f1c40f;
+  --cat-error: #e74c3c;
+  --cat-info: #3498db;
+  --cat-bg: #0d0d14;
+  --cat-card: #1e1e2e;
+  --cat-border: #333;
+}
