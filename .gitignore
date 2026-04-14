@@ -1,0 +1,44 @@
+# Rust
+/target
+**/*.rs.bk
+Cargo.lock
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CatCoding
+.catcoding/
+*.db
+*.db-journal
+
+# NATS
+/tmp/nats/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+.venv/
+venv/
+
+# Node (Dashboard)
+node_modules/
+dashboard/dist/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local

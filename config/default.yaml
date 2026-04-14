@@ -1,0 +1,71 @@
+# CatCoding 默认配置
+# 用户可通过 .catcoding/config.yaml 覆盖
+
+# 项目信息
+project:
+  name: "CatCoding"
+  tech_stack: []
+  auto_detect: true
+
+# Agent 角色配置
+agents:
+  - role: pm
+    auto: true
+    mode: resident
+  - role: core_dev
+    auto: true
+    mode: on_demand
+  - role: frontend
+    auto: false
+    mode: on_demand
+  - role: backend
+    auto: false
+    mode: on_demand
+  - role: reviewer
+    auto: true
+    trigger: on_task_complete
+    mode: resident
+  - role: tester
+    auto: false
+    mode: on_demand
+
+# 调度配置
+scheduler:
+  check_interval: 2          # 调度检查间隔（秒）
+  max_concurrent_tasks: 10   # 最大并发任务数
+
+# Watchdog 配置
+watchdog:
+  heartbeat_interval: 5      # Agent 发心跳间隔（秒）
+  heartbeat_timeout: 15      # 3 次没心跳 = 判死
+  task_timeout:
+    default: 600             # 单任务默认 10 分钟
+    coding: 1200             # 编码任务 20 分钟
+    review: 300              # 审核任务 5 分钟
+  resource_limits:
+    max_memory_mb: 2048      # 单 agent 最大内存
+    max_cpu_percent: 80      # CPU 告警阈值
+  recovery:
+    max_restart: 3           # 最多重启次数
+    restart_cooldown: 10     # 重启冷却（秒）
+
+# API 配置
+api:
+  host: "127.0.0.1"
+  port: 19800
+
+# NATS 配置
+nats:
+  url: "nats://127.0.0.1:4222"
+  jetstream: true
+
+# SQLite 配置
+sqlite:
+  path: ".catcoding/catcoding.db"
+
+# 皮肤配置
+skin: "cats"
+
+# 协调模式
+coordination:
+  mode: auto  # auto / flat / hierarchical / custom

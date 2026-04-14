@@ -1,0 +1,35 @@
+{
+  "version": "0.1.0",
+  "description": "CatCoding Agent 间通信协议",
+
+  "message_types": {
+    "task_result": "任务完成/失败结果",
+    "status_update": "状态更新（进度、阻塞等）",
+    "request": "请求（需要响应）",
+    "alert": "告警（Watchdog 触发）",
+    "heartbeat": "心跳包"
+  },
+
+  "message_schema": {
+    "msg_id": "string (UUID)",
+    "type": "string (message_types 之一)",
+    "from": "string (agent_id)",
+    "to": "string (agent_id | pm-agent | broadcast)",
+    "timestamp": "string (ISO 8601)",
+    "task_id": "string | null",
+    "status": "string | null (completed | failed | blocked | progress)",
+    "progress_percent": "number (0-100) | null",
+    "artifacts": "string[] (文件路径列表)",
+    "summary": "string",
+    "details": "string | null",
+    "blockers": "string[]"
+  },
+
+  "subjects": {
+    "tasks.{role}": "任务队列 (NATS Stream)",
+    "agent.{id}.progress": "Agent 进度推送 (Pub/Sub)",
+    "agent.heartbeat": "心跳 (Pub/Sub)",
+    "watchdog.alert": "告警 (Pub/Sub)",
+    "logs.{project_id}": "日志流 (NATS Stream)"
+  }
+}

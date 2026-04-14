@@ -1,0 +1,7 @@
+# CatCoding Python Agent 依赖
+
+# NATS 通信（可选，主要用 stdin/stdout）
+nats-py>=2.7.0
+
+# JSON 处理（内置）
+# asyncio（内置）
