@@ -235,8 +235,8 @@ onMounted(fetchData)
 }
 
 .agent-mini-task {
-  font-size: 11px;
-  opacity: 0.6;
+  font-size: 12px;
+  opacity: 0.75;
 }
 
 /* Watchdog */

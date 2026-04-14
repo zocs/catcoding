@@ -383,8 +383,8 @@ onMounted(fetchTasks)
 
 .task-id {
   font-family: monospace;
-  opacity: 0.4;
-  font-size: 11px;
+  opacity: 0.55;
+  font-size: 12px;
 }
 
 .task-body {
@@ -398,8 +398,8 @@ onMounted(fetchTasks)
 }
 
 .task-desc {
-  font-size: 12px;
-  opacity: 0.6;
+  font-size: 13px;
+  opacity: 0.75;
   line-height: 1.5;
 }
 
@@ -409,14 +409,14 @@ onMounted(fetchTasks)
 }
 
 .agent-name {
-  font-size: 12px;
+  font-size: 13px;
   color: #f5a623;
   font-weight: 500;
 }
 
 .unassigned {
-  font-size: 11px;
-  opacity: 0.4;
+  font-size: 12px;
+  opacity: 0.5;
   font-style: italic;
 }
 

@@ -325,13 +325,14 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
 .agent-role-tag {
   font-family: monospace;
-  font-size: 11px;
-  opacity: 0.4;
+  font-size: 13px;
+  opacity: 0.65;
+  color: #999;
 }
 
 .agent-desc {
-  font-size: 12px;
-  opacity: 0.6;
+  font-size: 13px;
+  opacity: 0.75;
   line-height: 1.5;
   margin-top: 6px;
 }
@@ -342,8 +343,8 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
 .current-task {
   margin-top: 8px;
-  font-size: 12px;
-  opacity: 0.7;
+  font-size: 13px;
+  opacity: 0.85;
 }
 
 .current-task .task-id {
