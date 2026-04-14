@@ -48,8 +48,8 @@ impl CodexAdapter {
     /// 构建命令参数
     fn build_args(&self, context: &AgentContext) -> Vec<String> {
         let mut args = vec![
-            "exec".to_string(),  // 执行模式
-            "--quiet".to_string(),  // 静默模式
+            "exec".to_string(),    // 执行模式
+            "--quiet".to_string(), // 静默模式
         ];
 
         if let Some(model) = &self.config.model {
@@ -62,10 +62,7 @@ impl CodexAdapter {
         // 添加指令
         let instruction = format!(
             "项目: {}\n角色: {}\n任务: {}\n工作目录: {}",
-            context.project_id,
-            context.role,
-            context.task_description,
-            context.working_dir
+            context.project_id, context.role, context.task_description, context.working_dir
         );
         args.push("--instruction".to_string());
         args.push(instruction);

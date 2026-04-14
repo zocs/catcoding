@@ -58,7 +58,8 @@ impl L1Index {
             match section {
                 "mappings" => {
                     if let Some((key, value)) = line.split_once("→") {
-                        self.mappings.insert(key.trim().to_string(), value.trim().to_string());
+                        self.mappings
+                            .insert(key.trim().to_string(), value.trim().to_string());
                     }
                 }
                 "keywords" => {

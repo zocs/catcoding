@@ -70,7 +70,10 @@ impl Scheduler {
             role,
             is_idle: true,
         };
-        self.idle_agents.write().await.insert(agent_id.clone(), slot);
+        self.idle_agents
+            .write()
+            .await
+            .insert(agent_id.clone(), slot);
         tracing::info!("🐱 Agent {} 已注册到调度器", agent_id);
         Ok(())
     }
@@ -131,7 +134,9 @@ impl Scheduler {
 
             // 找到对应角色的空闲 Agent
             let assigned_role = task.assigned_to.as_deref().unwrap_or("core_dev");
-            let available = agents.values().find(|a| a.is_idle && a.role == assigned_role);
+            let available = agents
+                .values()
+                .find(|a| a.is_idle && a.role == assigned_role);
 
             match available {
                 Some(agent) => {
@@ -160,13 +165,9 @@ impl Scheduler {
         state_manager: Arc<crate::state::StateManager>,
         project_id: String,
     ) {
-        tracing::info!(
-            "📋 调度器启动，检查间隔 {}s",
-            self.config.check_interval
-        );
-        let mut interval = tokio::time::interval(
-            std::time::Duration::from_secs(self.config.check_interval),
-        );
+        tracing::info!("📋 调度器启动，检查间隔 {}s", self.config.check_interval);
+        let mut interval =
+            tokio::time::interval(std::time::Duration::from_secs(self.config.check_interval));
 
         loop {
             interval.tick().await;

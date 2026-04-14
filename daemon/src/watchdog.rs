@@ -156,7 +156,8 @@ impl Watchdog {
         let memory_kb = std::fs::read_to_string(format!("{}/status", proc_path))
             .ok()
             .and_then(|content| {
-                content.lines()
+                content
+                    .lines()
                     .find(|line| line.starts_with("VmRSS:"))
                     .and_then(|line| {
                         line.split_whitespace()
@@ -174,10 +175,10 @@ impl Watchdog {
                 let parts: Vec<&str> = content.split_whitespace().collect();
                 if parts.len() > 2 {
                     match parts[2] {
-                        "R" => Some(50.0),  // Running
-                        "S" => Some(5.0),   // Sleeping
-                        "D" => Some(80.0),  // Uninterruptible sleep
-                        "Z" => Some(0.0),   // Zombie
+                        "R" => Some(50.0), // Running
+                        "S" => Some(5.0),  // Sleeping
+                        "D" => Some(80.0), // Uninterruptible sleep
+                        "Z" => Some(0.0),  // Zombie
                         _ => Some(10.0),
                     }
                 } else {
@@ -207,7 +208,10 @@ impl Watchdog {
         if monitor.restart_count >= self.config.max_restart {
             return (
                 RecoveryAction::Escalate,
-                format!("Agent {} 已重启 {} 次，达到上限", agent_id, monitor.restart_count),
+                format!(
+                    "Agent {} 已重启 {} 次，达到上限",
+                    agent_id, monitor.restart_count
+                ),
             );
         }
 
@@ -216,16 +220,16 @@ impl Watchdog {
             let proc_info = Self::check_proc(pid);
 
             if !proc_info.alive {
-                return (
-                    RecoveryAction::Restart,
-                    format!("进程 {} 已退出", pid),
-                );
+                return (RecoveryAction::Restart, format!("进程 {} 已退出", pid));
             }
 
             if proc_info.memory_kb as u64 > self.config.max_memory_mb * 1024 {
                 return (
                     RecoveryAction::Restart,
-                    format!("内存超限: {}KB > {}MB", proc_info.memory_kb, self.config.max_memory_mb),
+                    format!(
+                        "内存超限: {}KB > {}MB",
+                        proc_info.memory_kb, self.config.max_memory_mb
+                    ),
                 );
             }
 
@@ -241,7 +245,10 @@ impl Watchdog {
             if elapsed > self.config.heartbeat_timeout as i64 {
                 return (
                     RecoveryAction::Restart,
-                    format!("心跳超时: {}s > {}s", elapsed, self.config.heartbeat_timeout),
+                    format!(
+                        "心跳超时: {}s > {}s",
+                        elapsed, self.config.heartbeat_timeout
+                    ),
                 );
             }
 
@@ -252,7 +259,11 @@ impl Watchdog {
     }
 
     /// 执行恢复策略
-    pub async fn execute_recovery(&self, agent_id: &str, action: &RecoveryAction) -> Result<String> {
+    pub async fn execute_recovery(
+        &self,
+        agent_id: &str,
+        action: &RecoveryAction,
+    ) -> Result<String> {
         let mut agents = self.agents.write().await;
         let monitor = agents.get_mut(agent_id);
 
@@ -377,10 +388,13 @@ impl Watchdog {
 
     /// 启动监控循环
     pub async fn start_monitoring(self: Arc<Self>) {
-        tracing::info!("🦉 Watchdog 监控循环启动，间隔 {}s", self.config.heartbeat_interval);
-        let mut interval = tokio::time::interval(
-            std::time::Duration::from_secs(self.config.heartbeat_interval),
+        tracing::info!(
+            "🦉 Watchdog 监控循环启动，间隔 {}s",
+            self.config.heartbeat_interval
         );
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(
+            self.config.heartbeat_interval,
+        ));
 
         loop {
             interval.tick().await;

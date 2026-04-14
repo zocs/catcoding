@@ -119,21 +119,20 @@ async fn list_projects(State(state): State<Arc<ApiState>>) -> impl IntoResponse 
 }
 
 /// 获取项目详情
-async fn get_project(
-    State(state): State<Arc<ApiState>>,
-    Path(id): Path<String>,
-) -> Response {
+async fn get_project(State(state): State<Arc<ApiState>>, Path(id): Path<String>) -> Response {
     match state.state_manager.get_project(&id).await {
         Some(p) => Json(json!({
             "id": p.id,
             "name": p.name,
             "tasks": p.tasks.values().collect::<Vec<_>>(),
             "agents": p.agents.values().collect::<Vec<_>>()
-        })).into_response(),
+        }))
+        .into_response(),
         None => (
             StatusCode::NOT_FOUND,
             Json(json!({ "error": "项目不存在" })),
-        ).into_response(),
+        )
+            .into_response(),
     }
 }
 
@@ -156,17 +155,15 @@ async fn list_tasks(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
 }
 
 /// 获取单个任务
-async fn get_task(
-    State(state): State<Arc<ApiState>>,
-    Path(id): Path<String>,
-) -> Response {
+async fn get_task(State(state): State<Arc<ApiState>>, Path(id): Path<String>) -> Response {
     let project = state.state_manager.get_project(&state.project_id).await;
     match project.and_then(|p| p.tasks.get(&id).cloned()) {
         Some(task) => Json(json!(task)).into_response(),
         None => (
             StatusCode::NOT_FOUND,
             Json(json!({ "error": "任务不存在" })),
-        ).into_response(),
+        )
+            .into_response(),
     }
 }
 
@@ -184,7 +181,10 @@ async fn create_task(
     let title = task.title.clone();
 
     // 保存到状态管理器
-    let _ = state.state_manager.add_task(&state.project_id, task.clone()).await;
+    let _ = state
+        .state_manager
+        .add_task(&state.project_id, task.clone())
+        .await;
 
     // 加入调度队列
     let _ = state.scheduler.enqueue(task).await;
@@ -208,7 +208,8 @@ async fn update_task_status(
     Path(id): Path<String>,
     Json(body): Json<serde_json::Value>,
 ) -> Response {
-    let status_str = body.get("status")
+    let status_str = body
+        .get("status")
         .and_then(|v| v.as_str())
         .unwrap_or("active");
 
@@ -225,27 +226,30 @@ async fn update_task_status(
             return (
                 StatusCode::BAD_REQUEST,
                 Json(json!({ "error": "无效的状态" })),
-            ).into_response()
+            )
+                .into_response()
         }
     };
 
-    match state.state_manager.update_task_status(
-        &state.project_id,
-        &id,
-        new_status.clone(),
-    ).await {
+    match state
+        .state_manager
+        .update_task_status(&state.project_id, &id, new_status.clone())
+        .await
+    {
         Ok(_) => {
             tracing::info!("📋 任务 {} 状态更新为 {:?}", id, new_status);
             Json(json!({
                 "id": id,
                 "status": status_str,
                 "message": "状态已更新"
-            })).into_response()
+            }))
+            .into_response()
         }
         Err(e) => (
             StatusCode::INTERNAL_SERVER_ERROR,
             Json(json!({ "error": e.to_string() })),
-        ).into_response(),
+        )
+            .into_response(),
     }
 }
 
@@ -273,18 +277,19 @@ async fn dashboard_index() -> Response {
 /// 提供 Dashboard 静态文件
 async fn dashboard_handler(Path(path): Path<String>) -> Response {
     let path = if path.is_empty() { "index.html" } else { &path };
-    
+
     match DashboardAssets::get(path) {
         Some(content) => {
             let mime = mime_guess::from_path(path)
                 .first_or_octet_stream()
                 .to_string();
-            
+
             (
                 StatusCode::OK,
                 [(header::CONTENT_TYPE, mime)],
                 content.data.into_owned(),
-            ).into_response()
+            )
+                .into_response()
         }
         None => {
             // SPA fallback: 返回 index.html

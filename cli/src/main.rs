@@ -102,16 +102,47 @@ coordination:
         }
 
         Commands::Serve { port, foreground } => {
-            println!("🦉 启动 CatCoding Daemon...");
-            println!("📡 端口: {}", port);
+            println!("🦉 Starting CatCoding Daemon...");
+            println!("📡 Port: {}", port);
             println!("🌐 Dashboard: http://localhost:{}", port);
 
-            if !foreground {
-                println!("💡 使用 --foreground 在前台运行");
-            }
+            // 查找 catcoding-daemon 可执行文件
+            let daemon_path = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|d| d.join("catcoding-daemon")))
+                .filter(|p| p.exists());
 
-            // TODO: 实际启动 Daemon
-            println!("⚠️  Daemon 核心尚未完成编译，请等待 Phase 1 完成");
+            let daemon_path = match daemon_path {
+                Some(p) => p,
+                None => {
+                    // 尝试在 PATH 中查找
+                    match which::which("catcoding-daemon") {
+                        Ok(p) => p,
+                        Err(_) => {
+                            eprintln!("❌ catcoding-daemon not found!");
+                            eprintln!("💡 Build it with: cargo build --release");
+                            std::process::exit(1);
+                        }
+                    }
+                }
+            };
+
+            // 构建参数
+            let mut cmd = std::process::Command::new(&daemon_path);
+            cmd.env("API_PORT", port.to_string());
+
+            if foreground {
+                // 前台运行
+                println!("🏃 Running in foreground...");
+                let status = cmd.status()?;
+                std::process::exit(status.code().unwrap_or(1));
+            } else {
+                // 后台运行
+                println!("💡 Use --foreground to run in foreground");
+                let child = cmd.spawn()?;
+                println!("✅ Daemon started (PID: {})", child.id());
+                println!("🌐 Dashboard: http://localhost:{}", port);
+            }
         }
 
         Commands::Status { format } => {

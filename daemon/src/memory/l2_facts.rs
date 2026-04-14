@@ -39,7 +39,7 @@ impl L2Facts {
             let line = line.trim();
 
             if line.starts_with("## [") && line.ends_with(']') {
-                current_section = line[4..line.len()-1].to_string();
+                current_section = line[4..line.len() - 1].to_string();
                 continue;
             }
 

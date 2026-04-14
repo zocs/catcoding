@@ -239,12 +239,16 @@ impl CascadeHandler {
                 for dep_id in &dependents {
                     let deps = graph.get_dependencies(dep_id);
                     let all_done = deps.iter().all(|d| {
-                        tasks.iter().any(|t| &t.id == d && t.status == TaskStatus::Done)
+                        tasks
+                            .iter()
+                            .any(|t| &t.id == d && t.status == TaskStatus::Done)
                     });
 
                     if all_done {
                         if let Some(task) = tasks.iter().find(|t| t.id == *dep_id) {
-                            if task.status == TaskStatus::Blocked || task.status == TaskStatus::Pending {
+                            if task.status == TaskStatus::Blocked
+                                || task.status == TaskStatus::Pending
+                            {
                                 to_update.push(dep_id.clone());
                             }
                         }
@@ -292,7 +296,9 @@ impl CascadeHandler {
 
             let deps = graph.get_dependencies(&task.id);
             let all_done = deps.iter().all(|d| {
-                tasks.iter().any(|t| &t.id == d && t.status == TaskStatus::Done)
+                tasks
+                    .iter()
+                    .any(|t| &t.id == d && t.status == TaskStatus::Done)
             });
 
             if all_done || deps.is_empty() {

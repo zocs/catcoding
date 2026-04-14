@@ -49,7 +49,7 @@ impl ClaudeCodeAdapter {
     /// 构建命令参数
     fn build_args(&self, context: &AgentContext) -> Vec<String> {
         let mut args = vec![
-            "--print".to_string(),  // 非交互模式
+            "--print".to_string(), // 非交互模式
             "--output-format".to_string(),
             "json".to_string(),
         ];
@@ -64,10 +64,7 @@ impl ClaudeCodeAdapter {
         // 最后添加 prompt
         let prompt = format!(
             "项目: {}\n角色: {}\n任务: {}\n工作目录: {}",
-            context.project_id,
-            context.role,
-            context.task_description,
-            context.working_dir
+            context.project_id, context.role, context.task_description, context.working_dir
         );
         args.push(prompt);
 

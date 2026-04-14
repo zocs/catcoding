@@ -49,7 +49,7 @@ impl HermesAdapter {
             "chat".to_string(),
             "--query".to_string(),
             context.task_description.clone(),
-            "--worktree".to_string(),  // 隔离工作目录
+            "--worktree".to_string(), // 隔离工作目录
         ];
 
         if let Some(profile) = &self.config.profile {
@@ -206,21 +206,28 @@ impl AgentLifecycleManager {
         adapter_name: &str,
         context: AgentContext,
     ) -> Result<AgentHandle> {
-        let adapter = self.adapters.get(adapter_name)
+        let adapter = self
+            .adapters
+            .get(adapter_name)
             .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", adapter_name))?;
 
         let handle = adapter.spawn(context.clone()).await?;
-        self.handles.insert(context.agent_id.clone(), handle.clone());
+        self.handles
+            .insert(context.agent_id.clone(), handle.clone());
 
         Ok(handle)
     }
 
     /// 发送任务
     pub async fn send_task(&self, agent_id: &str, task: &str) -> Result<()> {
-        let handle = self.handles.get(agent_id)
+        let handle = self
+            .handles
+            .get(agent_id)
             .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_id))?;
 
-        let adapter = self.adapters.get(&handle.adapter_type)
+        let adapter = self
+            .adapters
+            .get(&handle.adapter_type)
             .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", handle.adapter_type))?;
 
         adapter.send_task(handle, task).await
@@ -228,10 +235,14 @@ impl AgentLifecycleManager {
 
     /// 停止 Agent
     pub async fn stop_agent(&self, agent_id: &str) -> Result<()> {
-        let handle = self.handles.get(agent_id)
+        let handle = self
+            .handles
+            .get(agent_id)
             .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_id))?;
 
-        let adapter = self.adapters.get(&handle.adapter_type)
+        let adapter = self
+            .adapters
+            .get(&handle.adapter_type)
             .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", handle.adapter_type))?;
 
         adapter.stop(handle).await
@@ -239,10 +250,14 @@ impl AgentLifecycleManager {
 
     /// 健康检查
     pub async fn check_health(&self, agent_id: &str) -> Result<HealthStatus> {
-        let handle = self.handles.get(agent_id)
+        let handle = self
+            .handles
+            .get(agent_id)
             .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_id))?;
 
-        let adapter = self.adapters.get(&handle.adapter_type)
+        let adapter = self
+            .adapters
+            .get(&handle.adapter_type)
             .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", handle.adapter_type))?;
 
         adapter.health_check(handle).await

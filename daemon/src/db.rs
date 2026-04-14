@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -25,7 +25,8 @@ impl Database {
     /// 异步初始化数据库 Schema
     pub async fn init_schema(&self) -> Result<()> {
         let conn = self.conn.lock().await;
-        conn.execute_batch("
+        conn.execute_batch(
+            "
             CREATE TABLE IF NOT EXISTS tasks (
                 id TEXT PRIMARY KEY,
                 project_id TEXT NOT NULL,
@@ -61,7 +62,8 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
             CREATE INDEX IF NOT EXISTS idx_agents_project ON agents(project_id);
             CREATE INDEX IF NOT EXISTS idx_history_task ON task_history(task_id);
-        ")?;
+        ",
+        )?;
         tracing::info!("💾 SQLite Schema 初始化完成: {}", self.db_path);
         Ok(())
     }
@@ -97,15 +99,22 @@ impl Database {
     }
 
     /// 更新任务状态
-    pub async fn update_task_status(&self, project_id: &str, task_id: &str, status: &str) -> Result<()> {
+    pub async fn update_task_status(
+        &self,
+        project_id: &str,
+        task_id: &str,
+        status: &str,
+    ) -> Result<()> {
         let conn = self.conn.lock().await;
 
         // 获取旧状态
-        let old_status: String = conn.query_row(
-            "SELECT status FROM tasks WHERE id = ?1 AND project_id = ?2",
-            params![task_id, project_id],
-            |row| row.get(0),
-        ).unwrap_or_default();
+        let old_status: String = conn
+            .query_row(
+                "SELECT status FROM tasks WHERE id = ?1 AND project_id = ?2",
+                params![task_id, project_id],
+                |row| row.get(0),
+            )
+            .unwrap_or_default();
 
         // 更新状态
         conn.execute(
@@ -142,7 +151,8 @@ impl Database {
             let updated_at_str: String = row.get(7)?;
             let artifacts_json: String = row.get(8)?;
 
-            let depends_on: Vec<String> = serde_json::from_str(&depends_on_json).unwrap_or_default();
+            let depends_on: Vec<String> =
+                serde_json::from_str(&depends_on_json).unwrap_or_default();
             let artifacts: Vec<String> = serde_json::from_str(&artifacts_json).unwrap_or_default();
             let created_at = DateTime::parse_from_rfc3339(&created_at_str)
                 .map(|dt| dt.with_timezone(&Utc))
@@ -195,7 +205,7 @@ impl Database {
         let conn = self.conn.lock().await;
         let mut stmt = conn.prepare(
             "SELECT id, role, status, current_task, last_heartbeat, restart_count
-             FROM agents WHERE project_id = ?1"
+             FROM agents WHERE project_id = ?1",
         )?;
 
         let agents = stmt.query_map(params![project_id], |row| {

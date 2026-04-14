@@ -93,7 +93,9 @@ impl L4Sessions {
             if path.extension().map_or(false, |e| e == "json") {
                 if let Ok(content) = fs::read_to_string(&path) {
                     if let Ok(session) = serde_json::from_str::<SessionArchive>(&content) {
-                        if let Ok(completed) = chrono::DateTime::parse_from_rfc3339(&session.completed_at) {
+                        if let Ok(completed) =
+                            chrono::DateTime::parse_from_rfc3339(&session.completed_at)
+                        {
                             let age_days = (now - completed.with_timezone(&chrono::Utc)).num_days();
                             if age_days > keep_days as i64 {
                                 // 压缩：只保留摘要

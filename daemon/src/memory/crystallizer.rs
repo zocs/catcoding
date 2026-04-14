@@ -96,7 +96,10 @@ impl SkillCrystallizer {
         if all_steps.contains("install") || all_steps.contains("apt") || all_steps.contains("pip") {
             keywords.push("install".to_string());
         }
-        if all_steps.contains("compile") || all_steps.contains("cargo") || all_steps.contains("make") {
+        if all_steps.contains("compile")
+            || all_steps.contains("cargo")
+            || all_steps.contains("make")
+        {
             keywords.push("compile".to_string());
         }
         if all_steps.contains("test") || all_steps.contains("pytest") {
@@ -131,8 +134,11 @@ impl SkillCrystallizer {
 
         for step in steps {
             let lower = step.to_lowercase();
-            if lower.contains("⚠️") || lower.contains("注意") || lower.contains("坑")
-                || lower.contains("error") || lower.contains("fail")
+            if lower.contains("⚠️")
+                || lower.contains("注意")
+                || lower.contains("坑")
+                || lower.contains("error")
+                || lower.contains("fail")
             {
                 pitfalls.push(step.clone());
             }
@@ -170,8 +176,10 @@ impl SkillCrystallizer {
 
         // 检查是否有实质性操作（不只是读取）
         let has_write = steps.iter().any(|s| {
-            s.contains("file_write") || s.contains("write_file")
-                || s.contains("patch") || s.contains("shell(")
+            s.contains("file_write")
+                || s.contains("write_file")
+                || s.contains("patch")
+                || s.contains("shell(")
         });
 
         has_write

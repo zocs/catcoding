@@ -115,7 +115,10 @@ impl RollbackManager {
         };
 
         // 保存到内存
-        self.checkpoints.write().await.insert(checkpoint_id.clone(), checkpoint.clone());
+        self.checkpoints
+            .write()
+            .await
+            .insert(checkpoint_id.clone(), checkpoint.clone());
 
         // 持久化到磁盘
         let path = format!("{}/{}.json", self.checkpoint_dir, checkpoint_id);
@@ -130,7 +133,8 @@ impl RollbackManager {
     /// 回滚到检查点
     pub async fn rollback(&self, checkpoint_id: &str) -> Result<Vec<String>> {
         let checkpoints = self.checkpoints.read().await;
-        let checkpoint = checkpoints.get(checkpoint_id)
+        let checkpoint = checkpoints
+            .get(checkpoint_id)
             .ok_or_else(|| anyhow::anyhow!("检查点不存在: {}", checkpoint_id))?;
 
         let mut restored_files = Vec::new();
@@ -142,7 +146,11 @@ impl RollbackManager {
             tracing::info!("🔄 恢复文件: {}", snapshot.path);
         }
 
-        tracing::info!("⏪ 回滚完成: {} (恢复 {} 个文件)", checkpoint_id, restored_files.len());
+        tracing::info!(
+            "⏪ 回滚完成: {} (恢复 {} 个文件)",
+            checkpoint_id,
+            restored_files.len()
+        );
 
         Ok(restored_files)
     }
@@ -164,7 +172,11 @@ impl RollbackManager {
     }
 
     /// 根据失败类型推荐恢复策略
-    pub fn recommend_strategy(&self, failure_type: &FailureType, restart_count: u32) -> RecoveryStrategy {
+    pub fn recommend_strategy(
+        &self,
+        failure_type: &FailureType,
+        restart_count: u32,
+    ) -> RecoveryStrategy {
         match failure_type {
             FailureType::TimeoutOrNetwork => {
                 if restart_count < 2 {
@@ -180,15 +192,9 @@ impl RollbackManager {
                     RecoveryStrategy::EscalatePM
                 }
             }
-            FailureType::TaskTooLarge => {
-                RecoveryStrategy::SplitAndRetry
-            }
-            FailureType::MissingDependency => {
-                RecoveryStrategy::EscalatePM
-            }
-            FailureType::CannotComplete => {
-                RecoveryStrategy::EscalateHuman
-            }
+            FailureType::TaskTooLarge => RecoveryStrategy::SplitAndRetry,
+            FailureType::MissingDependency => RecoveryStrategy::EscalatePM,
+            FailureType::CannotComplete => RecoveryStrategy::EscalateHuman,
         }
     }
 
@@ -202,22 +208,22 @@ impl RollbackManager {
             RecoveryStrategy::RetrySame { max_attempts } => {
                 // 回滚后重试
                 self.rollback(checkpoint_id).await?;
-                Ok(format!("已回滚，将在同 Agent 重试 (上限 {} 次)", max_attempts))
+                Ok(format!(
+                    "已回滚，将在同 Agent 重试 (上限 {} 次)",
+                    max_attempts
+                ))
             }
             RecoveryStrategy::RetryDifferent { max_attempts } => {
                 // 回滚后换 Agent
                 self.rollback(checkpoint_id).await?;
-                Ok(format!("已回滚，将换 Agent 重试 (上限 {} 次)", max_attempts))
+                Ok(format!(
+                    "已回滚，将换 Agent 重试 (上限 {} 次)",
+                    max_attempts
+                ))
             }
-            RecoveryStrategy::SplitAndRetry => {
-                Ok("任务需拆分，通知 PM".to_string())
-            }
-            RecoveryStrategy::EscalatePM => {
-                Ok("升级到 PM Agent 处理".to_string())
-            }
-            RecoveryStrategy::EscalateHuman => {
-                Ok("升级到用户处理".to_string())
-            }
+            RecoveryStrategy::SplitAndRetry => Ok("任务需拆分，通知 PM".to_string()),
+            RecoveryStrategy::EscalatePM => Ok("升级到 PM Agent 处理".to_string()),
+            RecoveryStrategy::EscalateHuman => Ok("升级到用户处理".to_string()),
         }
     }
 

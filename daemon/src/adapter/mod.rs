@@ -1,14 +1,14 @@
-pub mod hermes;
 pub mod claude;
 pub mod codex;
+pub mod hermes;
 
 use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-pub use hermes::{HermesAdapter, HermesConfig, AgentLifecycleManager};
 pub use claude::{ClaudeCodeAdapter, ClaudeCodeConfig};
 pub use codex::{CodexAdapter, CodexConfig};
+pub use hermes::{AgentLifecycleManager, HermesAdapter, HermesConfig};
 
 /// Agent 上下文
 #[derive(Debug, Clone, Serialize, Deserialize)]

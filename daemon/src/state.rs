@@ -170,12 +170,15 @@ impl StateManager {
     async fn ensure_project(&self, project_id: &str) {
         let mut projects = self.projects.write().await;
         if !projects.contains_key(project_id) {
-            projects.insert(project_id.to_string(), ProjectState {
-                id: project_id.to_string(),
-                name: project_id.to_string(),
-                tasks: HashMap::new(),
-                agents: HashMap::new(),
-            });
+            projects.insert(
+                project_id.to_string(),
+                ProjectState {
+                    id: project_id.to_string(),
+                    name: project_id.to_string(),
+                    tasks: HashMap::new(),
+                    agents: HashMap::new(),
+                },
+            );
         }
     }
 
@@ -220,7 +223,8 @@ impl StateManager {
 
         // 更新 SQLite
         if let Some(db) = &self.db {
-            db.update_task_status(project_id, task_id, status.as_str()).await?;
+            db.update_task_status(project_id, task_id, status.as_str())
+                .await?;
         }
 
         Ok(())
@@ -251,7 +255,9 @@ impl StateManager {
 
     /// 获取任务
     pub async fn get_task(&self, project_id: &str, task_id: &str) -> Option<Task> {
-        self.projects.read().await
+        self.projects
+            .read()
+            .await
             .get(project_id)
             .and_then(|p| p.tasks.get(task_id).cloned())
     }
@@ -271,8 +277,11 @@ impl StateManager {
                 for agent in agents {
                     project.agents.insert(agent.id.clone(), agent);
                 }
-                tracing::info!("💾 从 SQLite 加载了 {} 个任务和 {} 个 Agent",
-                    project.tasks.len(), project.agents.len());
+                tracing::info!(
+                    "💾 从 SQLite 加载了 {} 个任务和 {} 个 Agent",
+                    project.tasks.len(),
+                    project.agents.len()
+                );
             }
         }
         Ok(())

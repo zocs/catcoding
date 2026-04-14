@@ -41,8 +41,8 @@ const eggs: EasterEgg[] = [
   {
     id: 'legendary_cat',
     emoji: '🐱⬛',
-    title: '传说中的传奇奶牛猫！',
-    message: '抓到第 100 个 bug — 传说中的存在，当年把一只老鼠的耳朵都打掉了',
+    title: '传奇奶牛猫现身了！🐱⬛',
+    message: '抓到第 100 个 bug — 传说中这只猫曾一爪打掉过老鼠的耳朵，鼠辈闻风丧胆',
     trigger: 'bugs_100',
   },
   {

@@ -16,6 +16,7 @@ mod skin;
 mod state;
 mod watchdog;
 
+use adapter::AgentLifecycleManager;
 use api::ApiState;
 use db::Database;
 use memory::MemoryManager;
@@ -24,7 +25,6 @@ use skin::cats::CatSkin;
 use skin::Skin;
 use state::StateManager;
 use watchdog::{Watchdog, WatchdogConfig};
-use adapter::AgentLifecycleManager;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -36,7 +36,10 @@ async fn main() -> Result<()> {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    tracing::info!("🐱 CatCoding Daemon v{} 启动中...", env!("CARGO_PKG_VERSION"));
+    tracing::info!(
+        "🐱 CatCoding Daemon v{} 启动中...",
+        env!("CARGO_PKG_VERSION")
+    );
 
     // 皮肤系统
     let skin = CatSkin::new();
@@ -46,8 +49,8 @@ async fn main() -> Result<()> {
     }
 
     // 数据库（SQLite 冷存储）
-    let db_path = std::env::var("DB_PATH")
-        .unwrap_or_else(|_| ".catcoding/catcoding.db".to_string());
+    let db_path =
+        std::env::var("DB_PATH").unwrap_or_else(|_| ".catcoding/catcoding.db".to_string());
     std::fs::create_dir_all(".catcoding")?;
     let db = Arc::new(Database::new(&db_path)?);
     db.init_schema().await?;
@@ -85,7 +88,8 @@ async fn main() -> Result<()> {
     });
 
     // NATS 连接
-    let nats_url = std::env::var("NATS_URL").unwrap_or_else(|_| "nats://127.0.0.1:4222".to_string());
+    let nats_url =
+        std::env::var("NATS_URL").unwrap_or_else(|_| "nats://127.0.0.1:4222".to_string());
     match async_nats::connect(&nats_url).await {
         Ok(client) => {
             tracing::info!("📡 已连接 NATS: {}", nats_url);
@@ -116,8 +120,8 @@ async fn main() -> Result<()> {
     tracing::info!("🐱 Agent 生命周期管理器已初始化");
 
     // L4 记忆系统
-    let memory_dir = std::env::var("MEMORY_DIR")
-        .unwrap_or_else(|_| ".catcoding/memory".to_string());
+    let memory_dir =
+        std::env::var("MEMORY_DIR").unwrap_or_else(|_| ".catcoding/memory".to_string());
     let memory_manager = Arc::new(MemoryManager::new(&memory_dir)?);
     tracing::info!("🧠 L4 记忆系统已初始化: {}", memory_dir);
     tracing::info!("  L1 索引: {} 行", memory_manager.l1.line_count());

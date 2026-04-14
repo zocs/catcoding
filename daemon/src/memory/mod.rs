@@ -1,3 +1,4 @@
+pub mod crystallizer;
 /// 记忆系统 — L4 分层记忆
 ///
 /// 借鉴 GenericAgent 的四层架构：
@@ -5,18 +6,18 @@
 /// - L2: 事实库层（环境事实：路径、配置）
 /// - L3: 记录库层（SOP、脚本、结晶的 Skill）
 /// - L4: 历史会话层（归档）
-
 pub mod l1_index;
 pub mod l2_facts;
 pub mod l3_skills;
 pub mod l4_sessions;
-pub mod crystallizer;
+pub mod progressive_loader;
 
+pub use crystallizer::SkillCrystallizer;
 pub use l1_index::L1Index;
 pub use l2_facts::L2Facts;
 pub use l3_skills::{L3Skills, Skill};
 pub use l4_sessions::L4Sessions;
-pub use crystallizer::SkillCrystallizer;
+pub use progressive_loader::ProgressiveLoader;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -111,14 +112,17 @@ impl MemoryManager {
         task_summary: &str,
         execution_steps: Vec<String>,
     ) -> Result<String> {
-        let skill = self.crystallizer.crystallize(task_id, task_summary, execution_steps)?;
+        let skill = self
+            .crystallizer
+            .crystallize(task_id, task_summary, execution_steps)?;
         let skill_name = skill.name.clone();
 
         // 写入 L3
         self.l3.insert(&skill)?;
 
         // 更新 L1 索引
-        self.l1.add_mapping(&skill.trigger_scene, &format!("L3:{}", skill_name));
+        self.l1
+            .add_mapping(&skill.trigger_scene, &format!("L3:{}", skill_name));
 
         tracing::info!("✨ Skill 结晶完成: {} (来源任务: {})", skill_name, task_id);
         Ok(skill_name)
