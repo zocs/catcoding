@@ -2,7 +2,7 @@
 
 > Let AI cats collaborate like a dev team
 
-**[中文版](README_zh-CN.md)** · **[Getting Started](docs/guide/getting-started.md)** · **[Documentation](docs/)** · **[Website](https://catcoding.org)**
+**[🎮 Live Demo](https://demo.catcoding.org)** · **[中文版](README_zh-CN.md)** · **[Getting Started](docs/guide/getting-started.md)** · **[Website](https://catcoding.org)**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
@@ -41,13 +41,13 @@ CatCoding is a **framework-agnostic multi-agent collaborative software developme
                      │
 ┌────────────────────▼─────────────────────────┐
 │           Python Agent SDK                    │
-│  PM (Siamese) │ Dev (British) │ Review (Bombay)│
+│  PM (Siamese) │ Dev (British) │ Rev (Bombay)  │
 └──────────────────────────────────────────────┘
 ```
 
 ## 🚀 Quick Start
 
-See **[Getting Started Guide](docs/guide/getting-started.md)** for full instructions.
+See **[Getting Started](docs/guide/getting-started.md)** for full instructions.
 
 ```bash
 # Install (coming soon)

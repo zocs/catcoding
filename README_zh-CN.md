@@ -2,7 +2,7 @@
 
 > 让 AI 像猫咪团队一样协作写代码
 
-**[English](README.md)** · **[快速开始](docs/guide/getting-started.md)** · **[文档](docs/)** · **[官网](https://catcoding.org)**
+**[🎮 在线演示](https://demo.catcoding.org)** · **[English](README.md)** · **[快速开始](docs/guide/getting-started.md)** · **[官网](https://catcoding.org)**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
