@@ -1,0 +1,87 @@
+# CatCoding Agent 配置文件
+# 放置在项目根目录，命名为 .agent.yaml
+
+# 项目信息
+project:
+  name: "my-project"
+  description: "项目描述"
+  version: "0.1.0"
+
+# Daemon 连接配置
+daemon:
+  # Daemon 服务地址
+  host: "127.0.0.1"
+  port: 9527
+  # 可选：API 认证 token
+  # token: "your-secret-token"
+
+# Agent 角色配置
+agents:
+  # PM Agent（暹罗猫）— 常驻
+  pm:
+    enabled: true
+    mode: "resident"
+    adapter: "hermes"  # 可选: hermes, claude-code, codex
+    # adapter_config:
+    #   binary_path: "hermes"
+    #   profile: "pm"
+    
+  # 核心开发者（英短蓝猫）— 按需
+  core_dev:
+    enabled: true
+    mode: "on_demand"
+    adapter: "hermes"
+    
+  # 代码审查（玄猫）— 按需
+  reviewer:
+    enabled: true
+    mode: "on_demand"
+    adapter: "hermes"
+    
+  # 测试（阿比西尼亚猫）— 按需
+  tester:
+    enabled: true
+    mode: "on_demand"
+    adapter: "hermes"
+    
+  # 技术侦察（狐狸）— 按需
+  tech_scout:
+    enabled: true
+    mode: "on_demand"
+    adapter: "hermes"
+
+# Watchdog 配置
+watchdog:
+  # 心跳超时（秒）
+  heartbeat_timeout: 30
+  # 任务超时（秒）
+  task_timeout: 600
+  # 编码任务超时（秒）
+  coding_timeout: 1200
+  # 最大重启次数
+  max_restarts: 3
+
+# 存储配置
+storage:
+  # SQLite 数据库路径
+  database: ".catcoding/data.db"
+  # NATS 连接
+  nats:
+    url: "nats://localhost:4222"
+    # JetStream 配置
+    jetstream: true
+
+# Dashboard 配置
+dashboard:
+  # 是否启用
+  enabled: true
+  # 监听地址
+  host: "0.0.0.0"
+  port: 8080
+
+# 日志配置
+logging:
+  # 日志级别: trace, debug, info, warn, error
+  level: "info"
+  # 日志文件（可选）
+  # file: ".catcoding/logs/daemon.log"
