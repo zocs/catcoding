@@ -6,6 +6,8 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
+pub use hermes::{HermesAdapter, HermesConfig, AgentLifecycleManager};
+
 /// Agent 上下文
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentContext {
@@ -16,8 +18,25 @@ pub struct AgentContext {
     pub working_dir: String,
 }
 
+impl AgentContext {
+    pub fn new(agent_id: &str, role: &str, project_id: &str, task: &str) -> Self {
+        Self {
+            agent_id: agent_id.to_string(),
+            role: role.to_string(),
+            project_id: project_id.to_string(),
+            task_description: task.to_string(),
+            working_dir: ".".to_string(),
+        }
+    }
+
+    pub fn with_working_dir(mut self, dir: &str) -> Self {
+        self.working_dir = dir.to_string();
+        self
+    }
+}
+
 /// Agent 句柄
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct AgentHandle {
     pub agent_id: String,
     pub pid: Option<u32>,
@@ -43,8 +62,7 @@ pub enum HealthStatus {
 
 /// Adapter 接口 — 支持多种 AI Agent 框架
 ///
-/// 实现此 trait 即可接入新的 AI agent（Hermes, Claude Code, Codex, OpenCode 等）
-/// 框架不与任何 AI agent 锁死
+/// 实现此 trait 即可接入新的 AI agent
 #[async_trait]
 pub trait AgentAdapter: Send + Sync {
     /// 获取 Adapter 名称

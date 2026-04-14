@@ -20,6 +20,7 @@ use skin::cats::CatSkin;
 use skin::Skin;
 use state::StateManager;
 use watchdog::{Watchdog, WatchdogConfig};
+use adapter::AgentLifecycleManager;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -105,6 +106,10 @@ async fn main() -> Result<()> {
 
     // 从 SQLite 加载历史数据
     state_manager.load_from_db("default").await?;
+
+    // Agent 生命周期管理器
+    let lifecycle_manager = AgentLifecycleManager::new();
+    tracing::info!("🐱 Agent 生命周期管理器已初始化");
 
     // API 服务器
     let api_state = Arc::new(ApiState {
