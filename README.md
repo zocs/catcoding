@@ -1,191 +1,118 @@
 # 🐱 CatCoding
 
-> 让 AI 像猫咪团队一样协作做菜（写代码）
+> Let AI cats collaborate like a dev team
+
+**[中文版](README_zh-CN.md)** · **[Getting Started](docs/guide/getting-started.md)** · **[Documentation](docs/)** · **[Website](https://catcoding.org)**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.75+-orange.svg)](https://www.rust-lang.org/)
+[![CI](https://github.com/zocs/catcoding/actions/workflows/ci.yml/badge.svg)](https://github.com/zocs/catcoding/actions/workflows/ci.yml)
 
-CatCoding 是一个**独立于任何 AI agent 框架**的多 Agent 协同软件开发框架。通过 Adapter 接口支持多种 AI 编程 agent，将多个 AI agent 组织成高效协作的开发团队。
+CatCoding is a **framework-agnostic multi-agent collaborative software development framework**. It organizes multiple AI coding agents into an efficient team through a pluggable Adapter interface, supporting Hermes, Claude Code, Codex, and more.
 
-## ✨ 特性
+## ✨ Features
 
-- 🐱 **猫咪形象系统** — 每个 Agent 都有独特的猫咪角色
-- 🦉 **Watchdog 守护** — 三重检测，自动恢复
-- 📋 **可视化看板** — 实时监控 Agent 工作状态
-- 🔄 **多 Adapter 支持** — Hermes、Claude Code、Codex
-- 🧠 **L4 记忆系统** — 自动学习，技能结晶
-- 🐛 **Bug = 老鼠** — 有趣的 Bug 分级系统
+- 🐱 **Cat Persona System** — Each agent has a unique cat character with SVG avatars
+- 🦉 **Watchdog Guardian** — Triple-detection framework with auto-recovery
+- 📋 **Visual Dashboard** — Real-time Kanban, Gantt charts, agent status monitoring
+- 🔄 **Multi-Adapter** — Pluggable adapters: Hermes, Claude Code, Codex, OpenClaw
+- 🧠 **L4 Memory** — Four-layer memory: Index → Facts → Skills → Sessions
+- 🐛 **Bug = Mouse** — Fun bug classification system (catch mice = fix bugs)
 
-## 🏗️ 架构
+## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────┐
-│            用户层                        │
-│   Dashboard (Vue 3)    CLI              │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│      CatCoding Daemon (Rust)            │
-│  ┌─────────┐ ┌─────────┐ ┌──────────┐  │
-│  │ Watchdog│ │Scheduler│ │  Router  │  │
-│  └─────────┘ └─────────┘ └──────────┘  │
-│  ┌─────────────────────────────────┐   │
-│  │        Adapter 层               │   │
-│  │  Hermes │ Claude │ Codex       │   │
-│  └─────────────────────────────────┘   │
-└──────────────┬──────────────────────────┘
-               │
-┌──────────────▼──────────────────────────┐
-│         Python Agent SDK                │
-│  PM(暹罗猫) │ Dev(英短) │ Review(玄猫)  │
-└─────────────────────────────────────────┘
+┌──────────────────────────────────────────────┐
+│                    User Layer                 │
+│         Dashboard (Vue 3)      CLI           │
+└────────────────────┬─────────────────────────┘
+                     │
+┌────────────────────▼─────────────────────────┐
+│          CatCoding Daemon (Rust)              │
+│  ┌───────────┐ ┌───────────┐ ┌────────────┐  │
+│  │  Watchdog │ │ Scheduler │ │   Router   │  │
+│  │  Triple   │ │ Dep-gated │ │  NATS Msg  │  │
+│  └───────────┘ └───────────┘ └────────────┘  │
+│  ┌──────────────────────────────────────┐    │
+│  │           Adapter Layer              │    │
+│  │   Hermes  │  Claude Code  │  Codex   │    │
+│  └──────────────────────────────────────┘    │
+└────────────────────┬─────────────────────────┘
+                     │
+┌────────────────────▼─────────────────────────┐
+│           Python Agent SDK                    │
+│  PM (Siamese) │ Dev (British) │ Review (Bombay)│
+└──────────────────────────────────────────────┘
 ```
 
-## 🚀 快速开始
+## 🚀 Quick Start
 
-### 安装
+See **[Getting Started Guide](docs/guide/getting-started.md)** for full instructions.
 
 ```bash
-# 一键安装（即将支持）
+# Install (coming soon)
 curl -fsSL https://catcoding.org/install.sh | bash
 
-# 或从源码编译
-git clone https://github.com/catcoding-dev/catcoding.git
-cd catcoding
-cargo build --release
-```
+# Or build from source
+git clone https://github.com/zocs/catcoding.git
+cd catcoding && cargo build --release
 
-### 初始化项目
+# Initialize in your project
+cd your-project && catcoding init
 
-```bash
-# 在项目目录中初始化
-cd your-project
-catcoding init
-
-# 这会创建 .agent.yaml 配置文件
-```
-
-### 启动 Daemon
-
-```bash
-# 启动守护进程
+# Start daemon + dashboard
 catcoding serve
-
-# Daemon 会启动：
-# - HTTP API (默认: 127.0.0.1:9527)
-# - Dashboard (默认: 0.0.0.0:8080)
+# → Dashboard: http://localhost:8080
+# → API: http://127.0.0.1:9527
 ```
 
-### 访问 Dashboard
+## 🐱 Agent Team
 
-打开浏览器访问 `http://localhost:8080/dashboard`
+| Role | Cat | Responsibility |
+|------|-----|----------------|
+| PM | 🐱 Siamese | Requirements, task breakdown, progress tracking |
+| Core Dev | 🐱 British Shorthair | Code implementation |
+| Reviewer | 🐱 Bombay | Code review, bug detection |
+| Tester | 🐱 Abyssinian | Test cases, quality assurance |
+| Tech Scout | 🦊 Fox | Research, documentation gathering |
 
-## 🐱 猫咪团队
+## 🔌 Supported Adapters
 
-| 角色 | 猫咪 | 职责 |
-|------|------|------|
-| PM | 🐱 暹罗猫 | 需求分析、任务拆分、进度监控 |
-| 核心开发 | 🐱 英短蓝猫 | 代码实现 |
-| 代码审查 | 🐱 玄猫 | 代码审查、Bug 检测 |
-| 测试 | 🐱 阿比西尼亚猫 | 测试用例、质量保障 |
-| 技术侦察 | 🦊 狐狸 | 技术调研、文档搜集 |
+| Adapter | Status | Description |
+|---------|--------|-------------|
+| Hermes | ✅ | hermes-agent integration |
+| Claude Code | ✅ | claude CLI integration |
+| Codex | ✅ | codex CLI integration |
+| OpenCode | 🔜 | Planned |
 
-## 🐛 Bug 分级（老鼠系统）
-
-- 🐭 **小老鼠** — 简单 bug（拼写错误、语法问题）
-- 🐀 **大老鼠** — 顽固 bug（逻辑错误、边界情况）
-- 🦇 **蝙蝠** — 异常刁钻的 bug（时序问题、竞态条件）
-- 🐉 **恶龙** — 架构级 bug（系统性问题，需要重构）
-
-## 📁 配置文件
-
-在项目根目录创建 `.agent.yaml`：
-
-```yaml
-project:
-  name: "my-project"
-
-agents:
-  pm:
-    enabled: true
-    adapter: "hermes"
-  core_dev:
-    enabled: true
-    adapter: "claude-code"
-
-watchdog:
-  heartbeat_timeout: 30
-  max_restarts: 3
-```
-
-## 🔌 支持的 Adapter
-
-| Adapter | 状态 | 说明 |
-|---------|------|------|
-| Hermes | ✅ 已实现 | 基于 hermes-agent |
-| Claude Code | ✅ 已实现 | 基于 claude CLI |
-| Codex | ✅ 已实现 | 基于 codex CLI |
-| OpenCode | 🔜 计划中 | - |
-
-## 🛠️ 开发
-
-### 构建
+## 🛠️ Development
 
 ```bash
-# Debug 构建
-cargo build
-
-# Release 构建
-cargo build --release
-
-# 运行测试
-cargo test
+cargo build              # Debug build
+cargo build --release    # Release build
+cargo test               # Run tests
+make ci                  # Full CI pipeline (lint + test + build)
 ```
 
-### 项目结构
+## 📁 Project Structure
 
 ```
 catcoding/
-├── daemon/           # Rust Daemon 核心
+├── daemon/           # Rust Daemon core
 │   └── src/
-│       ├── api/      # HTTP API
-│       ├── adapter/  # Agent Adapter
+│       ├── api/      # HTTP API (Axum)
+│       ├── adapter/  # Agent Adapters
 │       ├── watchdog.rs
 │       └── scheduler.rs
-├── cli/              # CLI 工具
+├── cli/              # CLI tool
 ├── agents/           # Python Agent SDK
-│   ├── base/         # 基础 Agent
+│   ├── base/         # Base Agent
 │   ├── pm/           # PM Agent
 │   └── reviewer/     # Review Agent
-├── dashboard/        # Vue 3 前端
-└── config/           # 配置文件
+├── dashboard/        # Vue 3 Dashboard
+└── config/           # Configuration
 ```
-
-## 📊 Dashboard 功能
-
-- 📋 **看板视图** — 任务状态一目了然
-- 📊 **甘特图** — 时间线视图
-- 🐱 **猫咪面板** — Agent 状态监控
-- 🍳 **厨房日志** — 实时日志流
-- 💬 **指令输入** — 下发指令
-
-## 🎮 彩蛋系统
-
-连续完成任务、抓到 Bug、项目完成时会触发特殊彩蛋！
-
-- 🐯 **老虎模式** — 连续 10 个任务成功
-- 🐱⬛ **传奇奶牛猫** — 抓到 100 个 Bug
-- 🐼 **大熊猫庆祝** — 项目 100% 完成
 
 ## 📝 License
 
-MIT License
-
-## 🔗 链接
-
-- 🌐 官网: [catcoding.org](https://catcoding.org)（即将上线）
-- 📦 GitHub: [github.com/catcoding-dev/catcoding](https://github.com/catcoding-dev/catcoding)
-
----
-
-**CatCoding** — 让 AI 像猫咪团队一样协作做菜 🐱🍳
+[MIT License](LICENSE)
