@@ -14,6 +14,40 @@ const selectedAgent = ref<string | null>(null)
 const feedCount = ref<Record<string, number>>({})
 const windowWidth = ref(window.innerWidth)
 
+// 吉祥物点击追踪
+const mascotClicks = ref<Record<string, number>>({})
+const mascotLastClick = ref<Record<string, number>>({})
+const mascotMood = ref<Record<string, string>>({})
+const showParticles = ref<Record<string, boolean>>({})
+
+// 动物适配食物
+const ANIMAL_FOOD: Record<string, { emoji: string; name: string }> = {
+  mascot:     { emoji: '🎋', name: '竹子' },
+  tech_scout: { emoji: '🫐', name: '浆果' },
+  watchdog:   { emoji: '🐭', name: '老鼠' },
+}
+
+function getFoodEmoji(role: string): string {
+  return ANIMAL_FOOD[role]?.emoji || '🐟'
+}
+
+function getFoodName(role: string): string {
+  return ANIMAL_FOOD[role]?.name || '小鱼干'
+}
+
+// 吉祥物互动消息
+const MASCOT_REACTIONS: Record<number, { msg: string; mood: string; trigger?: string }> = {
+  1:  { msg: '🐼 大熊猫啃了一口竹子...', mood: 'eating' },
+  2:  { msg: '🎋 大熊猫又吃了根竹笋！', mood: 'eating' },
+  3:  { msg: '🐼 大熊猫打了个滚！肚皮朝天~', mood: 'rolling' },
+  5:  { msg: '🎋 大熊猫开始倒立行走？！', mood: 'handstand' },
+  7:  { msg: '😴 大熊猫突然犯困了...zzz', mood: 'sleeping' },
+  8:  { msg: '💤 大熊猫睡着了，发出呼噜声...', mood: 'sleeping' },
+  10: { msg: '🎉 大熊猫突然跳起来了！开启派对模式！', mood: 'party', trigger: 'panda_party' },
+  12: { msg: '🎋 大熊猫变出了满屏竹子！', mood: 'magic' },
+  15: { msg: '✨ 传说中的金色大熊猫出现了！！', mood: 'golden', trigger: 'golden_panda' },
+}
+
 // 响应式列数
 const gridCols = computed(() => {
   if (windowWidth.value < 480) return 1
@@ -68,6 +102,47 @@ function feedAgent(role: string) {
   if (allFed) {
     easterEggRef.value?.triggerEgg('streak_10')
   }
+}
+
+// 吉祥物互动 — 渐进式彩蛋
+function interactMascot(role: string) {
+  const now = Date.now()
+  const last = mascotLastClick.value[role] || 0
+
+  // 超过 5 秒没点击则重置计数
+  if (now - last > 5000) {
+    mascotClicks.value[role] = 0
+  }
+
+  mascotClicks.value[role] = (mascotClicks.value[role] || 0) + 1
+  mascotLastClick.value[role] = now
+
+  const count = mascotClicks.value[role]
+  const reaction = MASCOT_REACTIONS[count]
+
+  if (reaction) {
+    mascotMood.value[role] = reaction.mood
+    message.info(reaction.msg)
+
+    // 触发 EasterEgg
+    if (reaction.trigger) {
+      easterEggRef.value?.triggerEgg(reaction.trigger)
+    }
+
+    // 粒子爆发
+    showParticles.value[role] = true
+    setTimeout(() => { showParticles.value[role] = false }, 1500)
+  }
+
+  // 超过 15 次循环金熊猫彩蛋
+  if (count > 15 && count % 5 === 0) {
+    message.success('✨ 金色大熊猫对你眨了眨眼！')
+    showParticles.value[role] = true
+    setTimeout(() => { showParticles.value[role] = false }, 1500)
+  }
+
+  // 顺便也算投喂
+  feedAgent(role)
 }
 
 function getAgentInfo(role: string) {
@@ -149,8 +224,8 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
           <!-- 投喂按钮 -->
           <div class="card-footer">
-            <button class="feed-btn" @click.stop="feedAgent(agent.role)" title="投喂小鱼干">
-              🐟 {{ feedCount[agent.role] || 0 }}
+            <button class="feed-btn" @click.stop="feedAgent(agent.role)" :title="'投喂' + getFoodName(agent.role)">
+              {{ getFoodEmoji(agent.role) }} {{ feedCount[agent.role] || 0 }}
             </button>
           </div>
         </div>
@@ -164,7 +239,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
         <div
           v-for="agent in onDemand"
           :key="agent.role"
-          class="agent-card compact"
+          class="agent-card"
           :class="[agent.status]"
           @click="selectedAgent = selectedAgent === agent.role ? null : agent.role"
         >
@@ -172,22 +247,26 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
             <div class="card-ear left"></div>
             <div class="card-ear right"></div>
           </div>
-          <div class="card-body compact-body">
-            <CatAvatarSVG :role="agent.role" :status="agent.status" :size="56" />
-            <div class="compact-info">
-              <span class="agent-name">{{ agent.name }}</span>
-              <span class="agent-role-tag">@{{ agent.role }}</span>
-              <n-tag :type="getStatusType(agent.status)" size="tiny" round>
-                {{ getStatusLabel(agent.status) }}
-              </n-tag>
-              <div v-if="agent.current_task" class="current-task compact-task">
-                🔧 #{{ agent.current_task }}
+          <div class="card-body">
+            <CatAvatarSVG :role="agent.role" :status="agent.status" :size="64" />
+            <div class="agent-info">
+              <div class="agent-name-row">
+                <span class="agent-name">{{ agent.name }}</span>
+                <span class="agent-role-tag">@{{ agent.role }}</span>
+              </div>
+              <div class="agent-status">
+                <n-tag :type="getStatusType(agent.status)" size="small" round>
+                  {{ getStatusLabel(agent.status) }}
+                </n-tag>
+              </div>
+              <div v-if="agent.current_task" class="current-task">
+                🔧 正在处理: <span class="task-id">#{{ agent.current_task }}</span>
               </div>
             </div>
           </div>
           <div class="card-footer">
-            <button class="feed-btn small" @click.stop="feedAgent(agent.role)">
-              🐟 {{ feedCount[agent.role] || 0 }}
+            <button class="feed-btn" @click.stop="feedAgent(agent.role)" :title="'投喂' + getFoodName(agent.role)">
+              {{ getFoodEmoji(agent.role) }} {{ feedCount[agent.role] || 0 }}
             </button>
           </div>
         </div>

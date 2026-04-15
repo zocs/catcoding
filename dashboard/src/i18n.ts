@@ -1,0 +1,131 @@
+import { createI18n } from 'vue-i18n'
+
+const messages = {
+  en: {
+    nav: {
+      dashboard: 'Dashboard',
+      agents: 'Agents',
+      board: 'Board',
+      command: 'Command',
+      docs: 'Docs',
+    },
+    common: {
+      status: 'Status',
+      active: 'Active',
+      idle: 'Idle',
+      error: 'Error',
+      tasks: 'Tasks',
+      bugs: 'Bugs',
+      mice: 'Mice',
+      settings: 'Settings',
+      loading: 'Loading...',
+      noData: 'No data',
+    },
+    dashboard: {
+      title: 'CatCoding Dashboard',
+      totalTasks: 'Total Tasks',
+      activeAgents: 'Active Agents',
+      bugsCaught: 'Bugs Caught',
+      uptime: 'Uptime',
+      recentActivity: 'Recent Activity',
+    },
+    agents: {
+      title: 'Agent Team',
+      role: 'Role',
+      status: 'Status',
+      currentTask: 'Current Task',
+      tasksCompleted: 'Tasks Completed',
+      feed: 'Feed',
+      feedFish: 'Feed Fish 🐟',
+    },
+    board: {
+      title: 'Task Board',
+      todo: 'To Do',
+      inProgress: 'In Progress',
+      review: 'Review',
+      done: 'Done',
+      addTask: 'Add Task',
+    },
+    command: {
+      title: 'Command Center',
+      inputPlaceholder: 'Type a command...',
+      send: 'Send',
+      history: 'Command History',
+    },
+    bugHunter: {
+      title: 'Bug Hunter',
+      caught: 'Caught',
+      escaped: 'Escaped',
+      hunting: 'Hunting...',
+      noBugs: 'No bugs found! 🎉',
+    },
+  },
+  zh: {
+    nav: {
+      dashboard: '总览',
+      agents: 'Agent 团队',
+      board: '看板',
+      command: '指令中心',
+      docs: '文档',
+    },
+    common: {
+      status: '状态',
+      active: '活跃',
+      idle: '空闲',
+      error: '异常',
+      tasks: '任务',
+      bugs: 'Bug',
+      mice: '老鼠',
+      settings: '设置',
+      loading: '加载中...',
+      noData: '暂无数据',
+    },
+    dashboard: {
+      title: 'CatCoding 总览',
+      totalTasks: '任务总数',
+      activeAgents: '活跃 Agent',
+      bugsCaught: '已抓 Bug',
+      uptime: '运行时间',
+      recentActivity: '最近动态',
+    },
+    agents: {
+      title: '猫咪团队',
+      role: '角色',
+      status: '状态',
+      currentTask: '当前任务',
+      tasksCompleted: '已完成任务',
+      feed: '投喂',
+      feedFish: '投喂小鱼 🐟',
+    },
+    board: {
+      title: '任务看板',
+      todo: '待办',
+      inProgress: '进行中',
+      review: '审查',
+      done: '完成',
+      addTask: '添加任务',
+    },
+    command: {
+      title: '指令中心',
+      inputPlaceholder: '输入指令...',
+      send: '发送',
+      history: '指令历史',
+    },
+    bugHunter: {
+      title: 'Bug 追踪',
+      caught: '已抓捕',
+      escaped: '已逃脱',
+      hunting: '追捕中...',
+      noBugs: '没有发现 Bug！🎉',
+    },
+  },
+}
+
+const i18n = createI18n({
+  legacy: false,
+  locale: localStorage.getItem('catcoding-lang') || 'en',
+  fallbackLocale: 'en',
+  messages,
+})
+
+export default i18n

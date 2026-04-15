@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { NConfigProvider, NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NMessageProvider, NButton, NSpace, NDrawer, NDrawerContent } from 'naive-ui'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
+import { NConfigProvider, NLayout, NLayoutSider, NLayoutHeader, NLayoutContent, NMenu, NMessageProvider, NButton, NDrawer, NDrawerContent, darkTheme } from 'naive-ui'
 import { h, Component } from 'vue'
 import { RouterLink, RouterView, useRoute } from 'vue-router'
 import { DashboardOutlined, TableOutlined, TeamOutlined, BarChartOutlined, CodeOutlined, MenuOutlined } from '@vicons/antd'
 import { NIcon } from 'naive-ui'
+import ThemeSwitch from './components/ThemeSwitch.vue'
+import LangSwitch from './components/LangSwitch.vue'
+import { useI18n } from 'vue-i18n'
+import './theme.css'
+
+const { t } = useI18n()
 
 function renderIcon(icon: Component) {
   return () => h(NIcon, null, { default: () => h(icon) })
@@ -13,6 +19,7 @@ function renderIcon(icon: Component) {
 const route = useRoute()
 const windowWidth = ref(window.innerWidth)
 const showMobileMenu = ref(false)
+const isDark = ref(false)
 
 const isMobile = computed(() => windowWidth.value < 768)
 const isTablet = computed(() => windowWidth.value >= 768 && windowWidth.value < 1024)
@@ -20,49 +27,39 @@ const collapsed = ref(false)
 
 function onResize() {
   windowWidth.value = window.innerWidth
-  if (isMobile.value) {
-    collapsed.value = true
-  }
+  if (isMobile.value) collapsed.value = true
 }
 
 onMounted(() => {
   window.addEventListener('resize', onResize)
   onResize()
+  
+  // Listen for theme changes
+  window.addEventListener('theme-change', ((e: CustomEvent) => {
+    isDark.value = e.detail === 'dark'
+  }) as EventListener)
+  
+  // Initial detection
+  const saved = localStorage.getItem('catcoding-theme')
+  if (saved === 'dark') isDark.value = true
+  else if (saved === 'system') {
+    isDark.value = window.matchMedia('(prefers-color-scheme: dark)').matches
+  }
 })
 
 onUnmounted(() => {
   window.removeEventListener('resize', onResize)
 })
 
-const menuOptions = [
-  {
-    label: () => h(RouterLink, { to: '/dashboard' }, { default: () => '首页' }),
-    key: 'dashboard',
-    icon: renderIcon(DashboardOutlined)
-  },
-  {
-    label: () => h(RouterLink, { to: '/board' }, { default: () => '看板' }),
-    key: 'board',
-    icon: renderIcon(TableOutlined)
-  },
-  {
-    label: () => h(RouterLink, { to: '/agents' }, { default: () => '猫咪' }),
-    key: 'agents',
-    icon: renderIcon(TeamOutlined)
-  },
-  {
-    label: () => h(RouterLink, { to: '/gantt' }, { default: () => '甘特图' }),
-    key: 'gantt',
-    icon: renderIcon(BarChartOutlined)
-  },
-  {
-    label: () => h(RouterLink, { to: '/command' }, { default: () => '终端' }),
-    key: 'command',
-    icon: renderIcon(CodeOutlined)
-  }
-]
+const menuOptions = computed(() => [
+  { label: () => h(RouterLink, { to: '/dashboard' }, { default: () => t('nav.dashboard') }), key: 'dashboard', icon: renderIcon(DashboardOutlined) },
+  { label: () => h(RouterLink, { to: '/board' }, { default: () => t('nav.board') }), key: 'board', icon: renderIcon(TableOutlined) },
+  { label: () => h(RouterLink, { to: '/agents' }, { default: () => t('nav.agents') }), key: 'agents', icon: renderIcon(TeamOutlined) },
+  { label: () => h(RouterLink, { to: '/gantt' }, { default: () => '甘特图 / Gantt' }), key: 'gantt', icon: renderIcon(BarChartOutlined) },
+  { label: () => h(RouterLink, { to: '/command' }, { default: () => t('nav.command') }), key: 'command', icon: renderIcon(CodeOutlined) },
+])
 
-const themeOverrides = {
+const lightThemeOverrides = {
   common: {
     primaryColor: '#f5a623',
     primaryColorHover: '#ffb347',
@@ -72,13 +69,35 @@ const themeOverrides = {
   }
 }
 
-function navigateTo(path: string) {
+const darkThemeOverrides = {
+  common: {
+    primaryColor: '#e0af68',
+    primaryColorHover: '#f0c68a',
+    primaryColorPressed: '#c49545',
+    borderRadius: '12px',
+    fontFamily: "'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    bodyColor: '#0f111a',
+    cardColor: '#1a1b2e',
+    modalColor: '#1a1b2e',
+    popoverColor: '#24273a',
+    tableColor: '#1a1b2e',
+    inputColor: '#1e2030',
+    borderColor: '#3b3f52',
+    dividerColor: '#3b3f52',
+    hoverColor: '#2a2d42',
+  }
+}
+
+const currentTheme = computed(() => isDark.value ? darkTheme : null)
+const currentOverrides = computed(() => isDark.value ? darkThemeOverrides : lightThemeOverrides)
+
+function navigateTo() {
   showMobileMenu.value = false
 }
 </script>
 
 <template>
-  <n-config-provider :theme-overrides="themeOverrides">
+  <n-config-provider :theme="currentTheme" :theme-overrides="currentOverrides">
     <n-message-provider>
       <!-- ═══ 桌面布局 (>= 768px) ═══ -->
       <n-layout v-if="!isMobile" has-sider position="absolute">
@@ -104,6 +123,10 @@ function navigateTo(path: string) {
             :collapsed-icon-size="22"
             :indent="24"
           />
+          <div v-if="!collapsed" class="sider-footer">
+            <LangSwitch />
+            <ThemeSwitch />
+          </div>
         </n-layout-sider>
         <n-layout>
           <n-layout-header bordered class="header">
@@ -111,7 +134,11 @@ function navigateTo(path: string) {
               <span class="header-title">
                 🐱 CatCoding <span class="version">v0.1.0</span>
               </span>
-              <span class="header-motto">让 AI 像猫咪团队一样协作做菜！</span>
+              <div class="header-actions">
+                <span class="header-motto">{{ isDark ? '🌙 Night coding mode' : '☀️ Happy coding!' }}</span>
+                <ThemeSwitch v-if="collapsed" />
+                <LangSwitch v-if="collapsed" />
+              </div>
             </div>
           </n-layout-header>
           <n-layout-content class="content">
@@ -126,9 +153,12 @@ function navigateTo(path: string) {
           <div class="mobile-header-content">
             <span class="logo-emoji">🐱</span>
             <span class="header-title">CatCoding</span>
-            <n-button quaternary circle @click="showMobileMenu = true">
-              <template #icon><MenuOutlined /></template>
-            </n-button>
+            <div class="mobile-actions">
+              <ThemeSwitch />
+              <n-button quaternary circle @click="showMobileMenu = true">
+                <template #icon><MenuOutlined /></template>
+              </n-button>
+            </div>
           </div>
         </n-layout-header>
         <n-layout-content class="mobile-content">
@@ -144,6 +174,9 @@ function navigateTo(path: string) {
             :indent="16"
             @update:value="navigateTo"
           />
+          <div style="padding: 16px; display: flex; gap: 8px;">
+            <LangSwitch />
+          </div>
         </n-drawer-content>
       </n-drawer>
     </n-message-provider>
@@ -152,37 +185,19 @@ function navigateTo(path: string) {
 
 <style>
 /* ═══ 全局重置 ═══ */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body, #app {
   height: 100%;
   font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-/* ═══ 全局滚动条美化 ═══ */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: #d4c5a9;
-  border-radius: 3px;
-}
-
-::-webkit-scrollbar-track {
-  background: transparent;
 }
 </style>
 
 <style scoped>
 /* ═══ 侧边栏 ═══ */
 .sider {
-  background: linear-gradient(180deg, #faf7f2 0%, #f5f0e8 100%) !important;
+  background: var(--cat-sider-bg) !important;
+  transition: background 0.3s;
 }
 
 .logo {
@@ -213,8 +228,22 @@ html, body, #app {
 .logo-text {
   font-size: 18px;
   font-weight: bold;
-  color: #f5a623;
+  color: var(--cat-primary);
   white-space: nowrap;
+}
+
+.sider-footer {
+  padding: 12px 16px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  border-top: 1px solid var(--cat-border);
+  margin-top: auto;
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: inherit;
 }
 
 /* ═══ 桌面头部 ═══ */
@@ -223,8 +252,9 @@ html, body, #app {
   display: flex;
   align-items: center;
   padding: 0 24px;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--cat-header-bg);
   backdrop-filter: blur(8px);
+  transition: background 0.3s;
 }
 
 .header-content {
@@ -237,6 +267,7 @@ html, body, #app {
 .header-title {
   font-weight: 600;
   font-size: 15px;
+  color: var(--cat-text);
 }
 
 .version {
@@ -245,23 +276,31 @@ html, body, #app {
   font-weight: normal;
 }
 
+.header-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .header-motto {
   font-size: 12px;
   opacity: 0.5;
-  margin-left: auto;
+  color: var(--cat-text-muted);
 }
 
 /* ═══ 内容区 ═══ */
 .content {
   padding: 20px;
-  background: #faf8f5;
+  background: var(--cat-bg);
   min-height: calc(100vh - 56px);
+  transition: background 0.3s;
 }
 
 /* ═══ 移动头部 ═══ */
 .mobile-header {
   height: 56px;
-  background: rgba(255, 255, 255, 0.95);
+  background: var(--cat-header-bg);
   backdrop-filter: blur(8px);
 }
 
@@ -278,28 +317,26 @@ html, body, #app {
   font-weight: bold;
 }
 
+.mobile-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .mobile-content {
   padding: 12px;
-  background: #faf8f5;
+  background: var(--cat-bg);
   min-height: calc(100vh - 56px);
 }
 
-/* ═══ 响应式内容区 ═══ */
+/* ═══ 响应式 ═══ */
 @media (max-width: 480px) {
-  .content, .mobile-content {
-    padding: 8px;
-  }
+  .content, .mobile-content { padding: 8px; }
 }
-
 @media (min-width: 481px) and (max-width: 768px) {
-  .content, .mobile-content {
-    padding: 12px;
-  }
+  .content, .mobile-content { padding: 12px; }
 }
-
 @media (min-width: 769px) and (max-width: 1024px) {
-  .content {
-    padding: 16px;
-  }
+  .content { padding: 16px; }
 }
 </style>
