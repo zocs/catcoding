@@ -176,6 +176,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
             <CatAvatarSVG :role="agent.role" :status="agent.status" :size="56" />
             <div class="compact-info">
               <span class="agent-name">{{ agent.name }}</span>
+              <span class="agent-role-tag">@{{ agent.role }}</span>
               <n-tag :type="getStatusType(agent.status)" size="tiny" round>
                 {{ getStatusLabel(agent.status) }}
               </n-tag>
@@ -206,6 +207,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
           <div class="mascot-wrapper">
             <CatAvatarSVG :role="agent.role" status="idle" :size="120" :animated="true" />
             <div class="mascot-name">{{ agent.name }}</div>
+            <div class="agent-role-tag">@{{ agent.role }}</div>
             <div class="mascot-desc">{{ agent.description }}</div>
           </div>
         </div>
@@ -325,9 +327,13 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
 .agent-role-tag {
   font-family: monospace;
-  font-size: 13px;
-  opacity: 0.65;
-  color: #999;
+  font-size: 14px;
+  font-weight: 600;
+  opacity: 1;
+  color: #5a4a3a;
+  background: rgba(245, 166, 35, 0.08);
+  padding: 1px 8px;
+  border-radius: 10px;
 }
 
 .agent-desc {
