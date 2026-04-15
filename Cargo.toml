@@ -22,6 +22,10 @@ async-nats = "0.39"
 rusqlite = { version = "0.32", features = ["bundled", "serde_json"] }
 rust-embed = "8"
 mime_guess = "2"
-clap = { version = "4", features = ["derive"] }
+clap = { version = "4", features = ["derive", "env"] }
 futures-util = "0.3"
 md5 = "0.7"
+colored = "2"
+ureq = { version = "2", features = ["json"] }
+rustyline = "14"
+dirs = "5"

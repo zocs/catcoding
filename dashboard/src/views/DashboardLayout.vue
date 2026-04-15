@@ -9,7 +9,7 @@
       show-trigger
       @collapse="collapsed = true"
       @expand="collapsed = false"
-      style="background: #fef9f0; border-right: 1px solid #f0e6d6"
+      class="dashboard-sider"
     >
       <div class="sidebar-brand">
         <span class="brand-icon">🐱</span>
@@ -28,8 +28,8 @@
         <ThemeSwitch />
       </div>
     </n-layout-sider>
-    <n-layout>
-      <n-layout-content style="padding: 24px; background: #faf8f5">
+    <n-layout class="dashboard-main">
+      <n-layout-content class="dashboard-content">
         <router-view />
       </n-layout-content>
     </n-layout>
@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, h, computed } from 'vue'
+import { ref, h, computed, inject, type Ref } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import {
@@ -58,6 +58,7 @@ import ThemeSwitch from '../components/ThemeSwitch.vue'
 const router = useRouter()
 const route = useRoute()
 const { t } = useI18n()
+const isDark = inject<Ref<boolean>>('isDark')!
 
 const collapsed = ref(false)
 
@@ -83,7 +84,38 @@ function handleMenuSelect(key: string) {
 }
 </script>
 
-<style scoped>
+<style>
+/* Light theme */
+.dashboard-sider {
+  background: #fef9f0 !important;
+  border-right: 1px solid #f0e6d6 !important;
+}
+.dashboard-main {
+  background: #faf8f5;
+}
+.dashboard-content {
+  background: #faf8f5 !important;
+}
+.sidebar-brand {
+  color: #5a4a3a;
+}
+
+/* Dark theme */
+[data-theme="dark"] .dashboard-sider {
+  background: #1e1e2e !important;
+  border-right: 1px solid #313244 !important;
+}
+[data-theme="dark"] .dashboard-main {
+  background: #181825;
+}
+[data-theme="dark"] .dashboard-content {
+  background: #181825 !important;
+}
+[data-theme="dark"] .sidebar-brand {
+  color: #cdd6f4;
+}
+
+/* Shared */
 .sidebar-brand {
   display: flex;
   align-items: center;
@@ -91,13 +123,15 @@ function handleMenuSelect(key: string) {
   padding: 20px 16px;
   border-bottom: 1px solid #f0e6d6;
 }
+[data-theme="dark"] .sidebar-brand {
+  border-bottom: 1px solid #313244;
+}
 .brand-icon {
   font-size: 28px;
 }
 .brand-text {
   font-size: 18px;
   font-weight: 700;
-  color: #5a4a3a;
 }
 .sidebar-footer {
   position: absolute;

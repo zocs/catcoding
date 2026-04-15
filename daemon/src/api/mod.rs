@@ -21,7 +21,7 @@ use crate::watchdog::Watchdog;
 
 /// 嵌入式 Dashboard 静态文件
 #[derive(RustEmbed)]
-#[folder = "/home/zocs/devs/catcoding/dashboard/dist/"]
+#[folder = "../dashboard/dist/"]
 struct DashboardAssets;
 
 /// API 服务器状态
