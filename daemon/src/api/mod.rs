@@ -1,14 +1,16 @@
 use axum::{
-    extract::{Path, State},
+    extract::{Path, State, WebSocketUpgrade},
     http::{header, StatusCode},
     response::{Html, IntoResponse, Response},
     routing::{get, post},
     Json, Router,
 };
+use futures_util::{SinkExt, StreamExt};
 use rust_embed::RustEmbed;
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
+use tokio::sync::broadcast;
 
 use crate::adapter::AgentLifecycleManager;
 use crate::cascade::CascadeHandler;
@@ -29,6 +31,8 @@ pub struct ApiState {
     pub scheduler: Arc<Scheduler>,
     pub watchdog: Arc<Watchdog>,
     pub lifecycle_manager: Arc<tokio::sync::Mutex<AgentLifecycleManager>>,
+    /// WebSocket 广播通道
+    pub ws_tx: broadcast::Sender<String>,
 }
 
 /// 命令请求
@@ -65,6 +69,7 @@ pub fn create_router(state: Arc<ApiState>) -> Router {
         .route("/api/tasks/{id}/status", post(update_task_status))
         .route("/api/command", post(execute_command))
         .route("/api/watchdog", get(watchdog_status))
+        .route("/ws", get(ws_handler))
         .route("/dashboard", get(dashboard_index))
         .route("/dashboard/{*path}", get(dashboard_handler))
         .with_state(state)
@@ -301,4 +306,49 @@ async fn dashboard_handler(Path(path): Path<String>) -> Response {
             }
         }
     }
+}
+
+/// WebSocket 升级处理
+async fn ws_handler(
+    ws: WebSocketUpgrade,
+    State(state): State<Arc<ApiState>>,
+) -> impl IntoResponse {
+    ws.on_upgrade(|socket| ws_connection(socket, state))
+}
+
+/// WebSocket 连接处理
+async fn ws_connection(socket: axum::extract::ws::WebSocket, state: Arc<ApiState>) {
+    let (mut sender, mut receiver) = socket.split();
+    let mut rx = state.ws_tx.subscribe();
+
+    // 发送欢迎消息
+    let welcome = json!({
+        "type": "connected",
+        "message": "🐱 CatCoding WebSocket 已连接",
+        "timestamp": chrono::Utc::now().to_rfc3339(),
+    });
+    let _ = sender
+        .send(axum::extract::ws::Message::Text(welcome.to_string().into()))
+        .await;
+
+    // 转发广播消息到 WebSocket
+    let send_task = tokio::spawn(async move {
+        while let Ok(msg) = rx.recv().await {
+            if sender
+                .send(axum::extract::ws::Message::Text(msg.into()))
+                .await
+                .is_err()
+            {
+                break;
+            }
+        }
+    });
+
+    // 接收客户端消息（目前忽略）
+    while let Some(Ok(_msg)) = receiver.next().await {
+        // 可以处理客户端发来的消息
+    }
+
+    send_task.abort();
+    tracing::info!("📡 WebSocket 客户端断开");
 }

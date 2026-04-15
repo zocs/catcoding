@@ -1,6 +1,7 @@
 use anyhow::Result;
 use futures_util::StreamExt;
 use std::sync::Arc;
+use tokio::sync::{broadcast, Mutex};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod adapter;
@@ -24,7 +25,6 @@ use scheduler::{Scheduler, SchedulerConfig};
 use skin::cats::CatSkin;
 use skin::Skin;
 use state::StateManager;
-use tokio::sync::Mutex;
 use watchdog::{Watchdog, WatchdogConfig};
 
 #[tokio::main]
@@ -131,12 +131,17 @@ async fn main() -> Result<()> {
     tracing::info!("  L4 会话: {} 条", memory_manager.l4.count());
 
     // API 服务器
+    // WebSocket 广播通道
+    let (ws_tx, _ws_rx) = broadcast::channel::<String>(100);
+
+    // API 服务器状态
     let api_state = Arc::new(ApiState {
         project_id: "default".to_string(),
         state_manager: state_manager.clone(),
         scheduler: scheduler.clone(),
         watchdog: watchdog.clone(),
         lifecycle_manager: lifecycle_manager.clone(),
+        ws_tx: ws_tx.clone(),
     });
 
     let host = std::env::var("API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());
