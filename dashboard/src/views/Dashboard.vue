@@ -3,7 +3,9 @@ import { ref, onMounted } from 'vue'
 import { NCard, NStatistic, NSpace, NTag, NProgress, NList, NListItem, NThing, useMessage } from 'naive-ui'
 import { Task, Agent, WatchdogStatus, CatCodingApi, STATUS_CONFIG } from '@/api/types'
 import CatAvatarSVG from '@/components/CatAvatarSVG.vue'
-import CatBackground from '@/components/CatBackground.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const api = new CatCodingApi()
 const message = useMessage()
@@ -50,25 +52,24 @@ onMounted(fetchData)
 
 <template>
   <div class="dashboard-page">
-    <CatBackground />
     <div class="page-title">
       <span class="title-emoji">🏠</span>
-      <span class="title-text">CatCoding 总览</span>
+      <span class="title-text">{{ t('dashboard.title') }}</span>
     </div>
 
     <!-- 统计卡片 — 响应式 4→2→1 列 -->
     <div class="stats-grid">
       <n-card class="stat-card">
-        <n-statistic label="📋 总任务" :value="tasks.length" />
+        <n-statistic :label="t('dashboard.totalTasks')" :value="tasks.length" />
       </n-card>
       <n-card class="stat-card">
-        <n-statistic label="🐱 活跃猫咪" :value="activeAgents()" />
+        <n-statistic :label="t('dashboard.activeAgents')" :value="activeAgents()" />
       </n-card>
       <n-card class="stat-card">
         <n-statistic label="✅ 已完成" :value="statusCount('done')" />
       </n-card>
       <n-card class="stat-card">
-        <n-statistic label="⏱️ 运行时间" :value="watchdog ? (watchdog.uptime_seconds / 3600).toFixed(1) + 'h' : '0h'" />
+        <n-statistic :label="t('dashboard.uptime')" :value="watchdog ? (watchdog.uptime_seconds / 3600).toFixed(1) + 'h' : '0h'" />
       </n-card>
     </div>
 
@@ -126,8 +127,6 @@ onMounted(fetchData)
 .dashboard-page {
   max-width: 1200px;
   margin: 0 auto;
-  position: relative;
-  z-index: 1;
 }
 
 .page-title {

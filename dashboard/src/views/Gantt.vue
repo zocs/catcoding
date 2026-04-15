@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { NPageHeader, NCard, NTag, NSpace, NButton, useMessage } from 'naive-ui'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 interface Task {
   id: string
