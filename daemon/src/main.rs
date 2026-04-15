@@ -77,9 +77,12 @@ async fn main() -> Result<()> {
     let lifecycle_manager = Arc::new(Mutex::new(AgentLifecycleManager::new()));
     tracing::info!("Agent lifecycle manager initialized");
 
-    // Scheduler
+    // Scheduler (with watchdog integration)
     let scheduler_config = SchedulerConfig::default();
-    let scheduler = Arc::new(Scheduler::new(scheduler_config.clone(), lifecycle_manager.clone()));
+    let scheduler = Arc::new(
+        Scheduler::new(scheduler_config.clone(), lifecycle_manager.clone())
+            .with_watchdog(watchdog.clone()),
+    );
     tracing::info!(
         "Scheduler started - interval: {}s, max concurrent: {}",
         scheduler_config.check_interval,

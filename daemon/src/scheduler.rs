@@ -4,8 +4,9 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
-use crate::adapter::AgentLifecycleManager;
+use crate::adapter::{AgentContext, AgentLifecycleManager};
 use crate::state::{Task, TaskStatus};
+use crate::watchdog::Watchdog;
 
 /// 调度器配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -33,15 +34,17 @@ pub struct AgentSlot {
     pub is_idle: bool,
 }
 
-/// 调度器 — 任务调度 + 依赖检查门控
+/// 调度器 — 任务调度 + 依赖检查门控 + 自动 Agent 管理
 pub struct Scheduler {
     config: SchedulerConfig,
     /// 待调度任务队列
     pub pending_queue: Arc<RwLock<Vec<Task>>>,
     /// 空闲 Agent 列表
     pub idle_agents: Arc<RwLock<HashMap<String, AgentSlot>>>,
-    /// Agent 生命周期管理器（用于实际 dispatch）
+    /// Agent 生命周期管理器（用于实际 spawn + dispatch）
     lifecycle_manager: Arc<Mutex<AgentLifecycleManager>>,
+    /// Watchdog（用于注册监控）
+    watchdog: Option<Arc<Watchdog>>,
 }
 
 impl Scheduler {
@@ -51,7 +54,14 @@ impl Scheduler {
             pending_queue: Arc::new(RwLock::new(Vec::new())),
             idle_agents: Arc::new(RwLock::new(HashMap::new())),
             lifecycle_manager,
+            watchdog: None,
         }
+    }
+
+    /// 设置 Watchdog（用于注册 Agent 监控）
+    pub fn with_watchdog(mut self, watchdog: Arc<Watchdog>) -> Self {
+        self.watchdog = Some(watchdog);
+        self
     }
 
     /// 添加任务到调度队列
@@ -84,6 +94,47 @@ impl Scheduler {
     /// 获取空闲 Agent 数量
     pub async fn idle_agent_count(&self) -> usize {
         self.idle_agents.read().await.len()
+    }
+
+    /// 确保指定角色有可用 Agent，没有则自动 spawn
+    pub async fn ensure_agent_for_role(
+        &self,
+        role: &str,
+        project_id: &str,
+    ) -> Result<Option<String>> {
+        // 检查是否已有空闲 agent
+        {
+            let agents = self.idle_agents.read().await;
+            if let Some(agent) = agents.values().find(|a| a.is_idle && a.role == role) {
+                return Ok(Some(agent.agent_id.clone()));
+            }
+        }
+
+        // 没有空闲 agent → 自动 spawn
+        let agent_id = format!("{}-{}", role, uuid::Uuid::new_v4().to_string()[..8].to_string());
+        tracing::info!(
+            "🐱 Auto-spawning Agent: role={}, agent_id={}",
+            role,
+            agent_id
+        );
+
+        let context = AgentContext::new(&agent_id, role, project_id, "");
+
+        let handle = {
+            let mut lm = self.lifecycle_manager.lock().await;
+            lm.spawn_agent("hermes", context).await?
+        };
+
+        // 注册到 watchdog
+        if let Some(ref wd) = self.watchdog {
+            let _ = wd.register(agent_id.clone(), handle.pid).await;
+        }
+
+        // 注册为调度空闲 agent
+        self.register_agent(agent_id.clone(), role.to_string())
+            .await?;
+
+        Ok(Some(agent_id))
     }
 
     /// 检查任务依赖是否全部满足
@@ -132,22 +183,23 @@ impl Scheduler {
 
             // 找到对应角色的空闲 Agent
             let assigned_role = task.assigned_to.as_deref().unwrap_or("core_dev");
-            let available = agents
+            let agent_id = agents
                 .values()
-                .find(|a| a.is_idle && a.role == assigned_role);
+                .find(|a| a.is_idle && a.role == assigned_role)
+                .map(|a| a.agent_id.clone());
 
-            match available {
-                Some(agent) => {
+            match agent_id {
+                Some(id) => {
                     tracing::info!(
                         "Assigning task [{}] → Agent {} ({})",
                         task.title,
-                        agent.agent_id,
-                        agent.role
+                        id,
+                        assigned_role
                     );
-                    assignments.push((agent.agent_id.clone(), task));
+                    assignments.push((id, task));
                 }
                 None => {
-                    // 没有对应角色的 Agent，任务留在队列
+                    // 没有对应角色的 Agent → 自动 spawn 并分配
                     remaining.push(task);
                 }
             }
@@ -157,7 +209,7 @@ impl Scheduler {
         Ok(assignments)
     }
 
-    /// 启动调度循环
+    /// 启动调度循环 — 自动 spawn Agent + 分发任务
     pub async fn start_scheduling(
         self: Arc<Self>,
         state_manager: Arc<crate::state::StateManager>,
@@ -169,6 +221,36 @@ impl Scheduler {
 
         loop {
             interval.tick().await;
+
+            // 预处理：检查是否有 pending 任务需要对应角色但没有空闲 agent
+            {
+                let queue = self.pending_queue.read().await;
+                let agents = self.idle_agents.read().await;
+                let mut roles_needed: std::collections::HashSet<String> =
+                    std::collections::HashSet::new();
+
+                for task in queue.iter() {
+                    let role = task.assigned_to.as_deref().unwrap_or("core_dev");
+                    let has_idle = agents
+                        .values()
+                        .any(|a| a.is_idle && a.role == role);
+                    if !has_idle {
+                        roles_needed.insert(role.to_string());
+                    }
+                }
+
+                // 释放 locks 后 spawn
+                drop(agents);
+                drop(queue);
+
+                for role in roles_needed {
+                    if let Err(e) = self.ensure_agent_for_role(&role, &project_id).await {
+                        tracing::warn!("Auto-spawn failed for role {}: {}", role, e);
+                    }
+                }
+            }
+
+            // 执行调度
             match self.schedule_once(&state_manager, &project_id).await {
                 Ok(assignments) => {
                     for (agent_id, task) in assignments {
