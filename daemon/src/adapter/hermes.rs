@@ -2,63 +2,67 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, BufReader};
+use std::sync::Arc;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
+use tokio::sync::Mutex;
 
 use super::{AgentAdapter, AgentContext, AgentHandle, AgentOutput, HealthStatus};
 
 /// Hermes Agent 配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HermesConfig {
-    /// hermes-agent 可执行文件路径
-    pub binary_path: String,
-    /// 默认 profile
-    pub profile: Option<String>,
-    /// 额外参数
-    pub extra_args: Vec<String>,
+    /// Python 解释器路径
+    pub python_path: String,
+    /// Agent SDK 根目录
+    pub agents_dir: String,
 }
 
 impl Default for HermesConfig {
     fn default() -> Self {
         Self {
-            binary_path: "hermes".to_string(),
-            profile: None,
-            extra_args: Vec::new(),
+            python_path: "python3".to_string(),
+            agents_dir: "agents".to_string(),
         }
     }
 }
 
+/// 运行中的 Agent 进程状态
+struct RunningAgent {
+    child: Child,
+    stdout_reader: Arc<Mutex<BufReader<tokio::process::ChildStdout>>>,
+}
+
 /// Hermes Agent Adapter
 ///
-/// 通过 hermes CLI 与 Hermes Agent 交互
-/// 通信方式：stdin/stdout JSON-RPC
+/// 直接 spawn Python Agent 进程，通过 stdin/stdout JSON 通信
 pub struct HermesAdapter {
     config: HermesConfig,
+    /// 运行中的 Agent 进程（持有 stdin/stdout handle）
+    running: Arc<Mutex<std::collections::HashMap<String, RunningAgent>>>,
 }
 
 impl HermesAdapter {
     pub fn new(config: Option<HermesConfig>) -> Self {
         Self {
             config: config.unwrap_or_default(),
+            running: Arc::new(Mutex::new(std::collections::HashMap::new())),
         }
     }
 
-    /// 构建命令参数
-    fn build_args(&self, context: &AgentContext) -> Vec<String> {
-        let mut args = vec![
-            "chat".to_string(),
-            "--query".to_string(),
-            context.task_description.clone(),
-            "--worktree".to_string(), // 隔离工作目录
+    /// 获取 Agent 启动命令
+    fn build_command(&self, context: &AgentContext) -> (String, Vec<String>) {
+        let runner = format!("{}/run_agent.py", self.config.agents_dir);
+        let args = vec![
+            context.role.clone(),
+            "--agent-id".to_string(),
+            context.agent_id.clone(),
+            "--project-id".to_string(),
+            context.project_id.clone(),
+            "--workdir".to_string(),
+            context.working_dir.clone(),
         ];
-
-        if let Some(profile) = &self.config.profile {
-            args.push("--profile".to_string());
-            args.push(profile.clone());
-        }
-
-        args.extend(self.config.extra_args.clone());
-        args
+        (self.config.python_path.clone(), std::iter::once(runner).chain(args).collect())
     }
 }
 
@@ -70,30 +74,44 @@ impl AgentAdapter for HermesAdapter {
 
     async fn spawn(&self, context: AgentContext) -> Result<AgentHandle> {
         tracing::info!(
-            "🐱 启动 Hermes Agent: role={}, project={}",
+            "🐱 启动 Python Agent: role={}, project={}, agent_id={}",
             context.role,
-            context.project_id
+            context.project_id,
+            context.agent_id
         );
 
-        let args = self.build_args(&context);
-        tracing::debug!("hermes 命令: {} {:?}", self.config.binary_path, args);
+        let (python, args) = self.build_command(&context);
 
-        let child = Command::new(&self.config.binary_path)
+        let mut child = Command::new(&python)
             .args(&args)
-            .env("HERMES_PROJECT_ID", &context.project_id)
-            .env("HERMES_AGENT_ROLE", &context.role)
-            .env("HERMES_WORKDIR", &context.working_dir)
+            .env("AGENT_ID", &context.agent_id)
+            .env("PROJECT_ID", &context.project_id)
+            .env("WORKDIR", &context.working_dir)
+            .env("ROLE", &context.role)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
 
         let pid = child.id();
+        let stdout = child.stdout.take().unwrap();
+        let stdout_reader = Arc::new(Mutex::new(BufReader::new(stdout)));
 
-        tracing::info!("✅ Hermes Agent 已启动, PID: {:?}", pid);
+        let agent_id = context.agent_id.clone();
+
+        // 保存运行中进程
+        self.running.lock().await.insert(
+            agent_id.clone(),
+            RunningAgent {
+                child,
+                stdout_reader: stdout_reader.clone(),
+            },
+        );
+
+        tracing::info!("✅ Python Agent {} 已启动, PID: {:?}", agent_id, pid);
 
         Ok(AgentHandle {
-            agent_id: context.agent_id,
+            agent_id,
             pid,
             adapter_type: "hermes".to_string(),
         })
@@ -101,42 +119,120 @@ impl AgentAdapter for HermesAdapter {
 
     async fn send_task(&self, handle: &AgentHandle, task_description: &str) -> Result<()> {
         tracing::info!(
-            "📨 发送任务给 Hermes Agent {}: {}",
+            "📨 发送任务给 Agent {}: {}",
             handle.agent_id,
             &task_description[..task_description.len().min(80)]
         );
 
-        // TODO: 通过 stdin 发送 JSON-RPC 消息
-        // 当前使用 one-shot 模式，后续支持交互模式
+        let mut running = self.running.lock().await;
+        let agent = running
+            .get_mut(&handle.agent_id)
+            .ok_or_else(|| anyhow::anyhow!("Agent {} 未在运行", handle.agent_id))?;
+
+        // 构造任务分配消息（与 Python Agent 的 AgentMessage 兼容）
+        let msg = serde_json::json!({
+            "msg_id": uuid::Uuid::new_v4().to_string(),
+            "type": "task.assign",
+            "from": "daemon",
+            "to": handle.agent_id,
+            "timestamp": chrono::Utc::now().to_rfc3339(),
+            "task_id": uuid::Uuid::new_v4().to_string(),
+            "summary": task_description,
+        });
+
+        let line = format!("{}\n", msg);
+        if let Some(stdin) = agent.child.stdin.as_mut() {
+            stdin.write_all(line.as_bytes()).await?;
+            stdin.flush().await?;
+            tracing::debug!("📤 已写入 {} bytes 到 Agent stdin", line.len());
+        } else {
+            anyhow::bail!("Agent {} stdin 已关闭", handle.agent_id);
+        }
 
         Ok(())
     }
 
-    async fn get_output(&self, _handle: &AgentHandle) -> Result<Option<AgentOutput>> {
-        // TODO: 从 stdout 读取 Agent 输出
-        // 需要持有 Child 进程的 stdout handle
-        Ok(None)
+    async fn get_output(&self, handle: &AgentHandle) -> Result<Option<AgentOutput>> {
+        let mut running = self.running.lock().await;
+        let agent = running
+            .get_mut(&handle.agent_id)
+            .ok_or_else(|| anyhow::anyhow!("Agent {} 未在运行", handle.agent_id))?;
+
+        let mut line = String::new();
+        let n = tokio::time::timeout(
+            std::time::Duration::from_millis(100),
+            agent.stdout_reader.lock().await.read_line(&mut line),
+        )
+        .await;
+
+        match n {
+            Ok(Ok(0)) => {
+                // EOF — Agent 进程已退出
+                tracing::info!("📭 Agent {} stdout EOF", handle.agent_id);
+                Ok(None)
+            }
+            Ok(Ok(_)) => {
+                let line = line.trim().to_string();
+                if line.is_empty() {
+                    return Ok(None);
+                }
+
+                // 解析 JSON 输出
+                let output_type = if let Ok(val) = serde_json::from_str::<serde_json::Value>(&line)
+                {
+                    val.get("type")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("unknown")
+                        .to_string()
+                } else {
+                    "raw".to_string()
+                };
+
+                Ok(Some(AgentOutput {
+                    agent_id: handle.agent_id.clone(),
+                    output_type,
+                    content: line,
+                    timestamp: chrono::Utc::now().to_rfc3339(),
+                }))
+            }
+            Ok(Err(e)) => {
+                tracing::error!("读取 Agent {} stdout 错误: {}", handle.agent_id, e);
+                Ok(None)
+            }
+            Err(_) => {
+                // 超时 — 没有新输出
+                Ok(None)
+            }
+        }
     }
 
     async fn stop(&self, handle: &AgentHandle) -> Result<()> {
-        tracing::info!("🛑 停止 Hermes Agent: {}", handle.agent_id);
+        tracing::info!("🛑 停止 Agent: {}", handle.agent_id);
 
-        if let Some(pid) = handle.pid {
-            // 优雅停止：先 SIGTERM，等待 5s，再 SIGKILL
-            unsafe {
-                libc::kill(pid as i32, libc::SIGTERM);
+        let mut running = self.running.lock().await;
+        if let Some(mut agent) = running.remove(&handle.agent_id) {
+            // 先发送停止消息
+            if let Some(stdin) = agent.child.stdin.as_mut() {
+                let stop_msg = serde_json::json!({
+                    "type": "stop",
+                    "from": "daemon",
+                    "to": handle.agent_id,
+                });
+                let line = format!("{}\n", stop_msg);
+                let _ = stdin.write_all(line.as_bytes()).await;
             }
-            tracing::info!("📤 已发送 SIGTERM 给进程 {}", pid);
 
-            // 等待进程退出
-            tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+            // 等待 3 秒
+            tokio::time::sleep(std::time::Duration::from_secs(3)).await;
 
-            // 检查是否还活着
-            let proc_path = format!("/proc/{}", pid);
-            if std::path::Path::new(&proc_path).exists() {
-                tracing::warn!("⚠️ 进程 {} 未退出，发送 SIGKILL", pid);
-                unsafe {
-                    libc::kill(pid as i32, libc::SIGKILL);
+            // 如果还活着就杀掉
+            match agent.child.try_wait()? {
+                Some(status) => {
+                    tracing::info!("✅ Agent {} 已退出: {}", handle.agent_id, status);
+                }
+                None => {
+                    tracing::warn!("⚠️ Agent {} 未退出，发送 SIGKILL", handle.agent_id);
+                    agent.child.kill().await?;
                 }
             }
         }
@@ -145,30 +241,21 @@ impl AgentAdapter for HermesAdapter {
     }
 
     async fn health_check(&self, handle: &AgentHandle) -> Result<HealthStatus> {
-        match handle.pid {
-            Some(pid) => {
-                let proc_path = format!("/proc/{}", pid);
+        let running = self.running.lock().await;
+        match running.get(&handle.agent_id) {
+            Some(agent) => {
+                // 检查进程是否还活着
+                let proc_path = format!("/proc/{}", handle.pid.unwrap_or(0));
                 if std::path::Path::new(&proc_path).exists() {
-                    // 检查进程状态
-                    let status = std::fs::read_to_string(format!("{}/status", proc_path))
-                        .unwrap_or_default();
-
-                    if status.contains("State:\tZ") {
-                        // Zombie 进程
-                        Ok(HealthStatus::Unhealthy {
-                            reason: format!("进程 {} 是僵尸进程", pid),
-                        })
-                    } else {
-                        Ok(HealthStatus::Healthy)
-                    }
+                    Ok(HealthStatus::Healthy)
                 } else {
                     Ok(HealthStatus::Unhealthy {
-                        reason: format!("进程 {} 不存在", pid),
+                        reason: format!("进程 {} 不存在", handle.pid.unwrap_or(0)),
                     })
                 }
             }
-            None => Ok(HealthStatus::Degraded {
-                reason: "无 PID 信息".to_string(),
+            None => Ok(HealthStatus::Unhealthy {
+                reason: "Agent 未在运行".to_string(),
             }),
         }
     }
@@ -231,6 +318,21 @@ impl AgentLifecycleManager {
             .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", handle.adapter_type))?;
 
         adapter.send_task(handle, task).await
+    }
+
+    /// 读取输出
+    pub async fn get_output(&self, agent_id: &str) -> Result<Option<AgentOutput>> {
+        let handle = self
+            .handles
+            .get(agent_id)
+            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_id))?;
+
+        let adapter = self
+            .adapters
+            .get(&handle.adapter_type)
+            .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", handle.adapter_type))?;
+
+        adapter.get_output(handle).await
     }
 
     /// 停止 Agent

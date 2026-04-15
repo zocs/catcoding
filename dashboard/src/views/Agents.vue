@@ -4,6 +4,9 @@ import { NPageHeader, NCard, NTag, NSpace, NButton, NEmpty, useMessage } from 'n
 import { Agent, CatCodingApi, AGENT_ROLES_FIXED } from '@/api/types'
 import CatAvatarSVG from '@/components/CatAvatarSVG.vue'
 import EasterEgg from '@/components/EasterEgg.vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const api = new CatCodingApi()
 const message = useMessage()

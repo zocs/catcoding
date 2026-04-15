@@ -2,8 +2,9 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
+use crate::adapter::AgentLifecycleManager;
 use crate::state::{Task, TaskStatus};
 
 /// 调度器配置
@@ -33,26 +34,23 @@ pub struct AgentSlot {
 }
 
 /// 调度器 — 任务调度 + 依赖检查门控
-///
-/// 职责：
-/// - 从任务队列读取新任务
-/// - 检查任务依赖链是否就绪
-/// - 就绪任务分配给对应角色的空闲 agent
-/// - 不就绪的任务放回队列尾部，不浪费 agent token
 pub struct Scheduler {
     config: SchedulerConfig,
     /// 待调度任务队列
     pub pending_queue: Arc<RwLock<Vec<Task>>>,
     /// 空闲 Agent 列表
     pub idle_agents: Arc<RwLock<HashMap<String, AgentSlot>>>,
+    /// Agent 生命周期管理器（用于实际 dispatch）
+    lifecycle_manager: Arc<Mutex<AgentLifecycleManager>>,
 }
 
 impl Scheduler {
-    pub fn new(config: SchedulerConfig) -> Self {
+    pub fn new(config: SchedulerConfig, lifecycle_manager: Arc<Mutex<AgentLifecycleManager>>) -> Self {
         Self {
             config,
             pending_queue: Arc::new(RwLock::new(Vec::new())),
             idle_agents: Arc::new(RwLock::new(HashMap::new())),
+            lifecycle_manager,
         }
     }
 
@@ -174,8 +172,27 @@ impl Scheduler {
             match self.schedule_once(&state_manager, &project_id).await {
                 Ok(assignments) => {
                     for (agent_id, task) in assignments {
-                        tracing::info!("🚀 任务 [{}] 已分配给 {}", task.title, agent_id);
-                        // TODO: 通过 Router 发送任务给 Agent
+                        tracing::info!("🚀 分发任务 [{}] → {}", task.title, agent_id);
+
+                        // 通过生命周期管理器实际发送任务给 Agent
+                        let lm = self.lifecycle_manager.lock().await;
+                        match lm.send_task(&agent_id, &task.description).await {
+                            Ok(()) => {
+                                tracing::info!("✅ 任务已发送给 Agent {}", agent_id);
+                                // 更新任务状态为 active
+                                let _ = state_manager
+                                    .update_task_status(
+                                        &project_id,
+                                        &task.id,
+                                        TaskStatus::Active,
+                                    )
+                                    .await;
+                            }
+                            Err(e) => {
+                                tracing::error!("❌ 发送任务失败: {}，放回队列", e);
+                                self.pending_queue.write().await.push(task);
+                            }
+                        }
                     }
                 }
                 Err(e) => {

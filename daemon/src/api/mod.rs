@@ -10,6 +10,7 @@ use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 
+use crate::adapter::AgentLifecycleManager;
 use crate::cascade::CascadeHandler;
 use crate::rollback::RollbackManager;
 use crate::scheduler::Scheduler;
@@ -27,6 +28,7 @@ pub struct ApiState {
     pub state_manager: Arc<StateManager>,
     pub scheduler: Arc<Scheduler>,
     pub watchdog: Arc<Watchdog>,
+    pub lifecycle_manager: Arc<tokio::sync::Mutex<AgentLifecycleManager>>,
 }
 
 /// 命令请求

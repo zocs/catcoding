@@ -24,6 +24,7 @@ use scheduler::{Scheduler, SchedulerConfig};
 use skin::cats::CatSkin;
 use skin::Skin;
 use state::StateManager;
+use tokio::sync::Mutex;
 use watchdog::{Watchdog, WatchdogConfig};
 
 #[tokio::main]
@@ -71,9 +72,13 @@ async fn main() -> Result<()> {
     let watchdog_clone = watchdog.clone();
     tokio::spawn(async move { watchdog_clone.start_monitoring().await });
 
+    // Agent 生命周期管理器
+    let lifecycle_manager = Arc::new(Mutex::new(AgentLifecycleManager::new()));
+    tracing::info!("🐱 Agent 生命周期管理器已初始化");
+
     // 调度器
     let scheduler_config = SchedulerConfig::default();
-    let scheduler = Arc::new(Scheduler::new(scheduler_config.clone()));
+    let scheduler = Arc::new(Scheduler::new(scheduler_config.clone(), lifecycle_manager.clone()));
     tracing::info!(
         "📋 调度器已启动 — 检查间隔: {}s, 最大并发: {}",
         scheduler_config.check_interval,
@@ -115,10 +120,6 @@ async fn main() -> Result<()> {
     // 从 SQLite 加载历史数据
     state_manager.load_from_db("default").await?;
 
-    // Agent 生命周期管理器
-    let lifecycle_manager = AgentLifecycleManager::new();
-    tracing::info!("🐱 Agent 生命周期管理器已初始化");
-
     // L4 记忆系统
     let memory_dir =
         std::env::var("MEMORY_DIR").unwrap_or_else(|_| ".catcoding/memory".to_string());
@@ -135,6 +136,7 @@ async fn main() -> Result<()> {
         state_manager: state_manager.clone(),
         scheduler: scheduler.clone(),
         watchdog: watchdog.clone(),
+        lifecycle_manager: lifecycle_manager.clone(),
     });
 
     let host = std::env::var("API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());

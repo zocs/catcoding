@@ -75,7 +75,7 @@ async function refresh() {
     // Demo 模式
     tasks.value = DEMO_TASKS
     today.value = 9 // 模拟第 9 天
-    message.info('🎮 Demo 模式 — 展示示例甘特图')
+    message.info('🎮 ' + t('gantt.demo'))
   }
 }
 
@@ -84,16 +84,16 @@ onMounted(refresh)
 
 <template>
   <div class="gantt-page">
-    <n-page-header title="📊 甘特图" subtitle="猫咪团队任务时间线">
+    <n-page-header :title="'📊 ' + t('gantt.title')" :subtitle="t('gantt.subtitle')">
       <template #extra>
-        <n-button @click="refresh" round>🔄 刷新</n-button>
+        <n-button @click="refresh" round>🔄 {{ t('gantt.refresh') }}</n-button>
       </template>
     </n-page-header>
 
     <n-card style="margin-top: 24px" class="gantt-card">
       <!-- 时间标尺 -->
       <div class="time-ruler">
-        <div class="ruler-label">任务</div>
+        <div class="ruler-label">{{ t('gantt.title') }}</div>
         <div class="ruler-days">
           <div v-for="d in totalDays" :key="d" class="ruler-day" :class="{ today: d - 1 === today }">
             Day {{ d - 1 }}
@@ -103,7 +103,7 @@ onMounted(refresh)
 
       <!-- 今日线 -->
       <div class="today-line" :style="{ left: `calc(200px + ${today} * 60px + 30px)` }">
-        <span class="today-label">📍 今天</span>
+        <span class="today-label">{{ t('gantt.today') }}</span>
       </div>
 
       <!-- 任务行 -->
