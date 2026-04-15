@@ -5,34 +5,45 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      redirect: '/board',
+      redirect: '/dashboard'
     },
     {
-      path: '/board',
-      name: 'Board',
-      component: () => import('../views/Board.vue'),
-    },
-    {
-      path: '/gantt',
-      name: 'Gantt',
-      component: () => import('../views/Gantt.vue'),
-    },
-    {
-      path: '/agents',
-      name: 'Agents',
-      component: () => import('../views/Agents.vue'),
-    },
-    {
-      path: '/logs',
-      name: 'Logs',
-      component: () => import('../views/Logs.vue'),
-    },
-    {
-      path: '/command',
-      name: 'Command',
-      component: () => import('../views/Command.vue'),
-    },
-  ],
+      path: '/dashboard',
+      component: () => import('../views/DashboardLayout.vue'),
+      children: [
+        {
+          path: '',
+          name: 'dashboard',
+          redirect: { name: 'agents' }
+        },
+        {
+          path: 'agents',
+          name: 'agents',
+          component: () => import('../views/Agents.vue')
+        },
+        {
+          path: 'gantt',
+          name: 'gantt',
+          component: () => import('../views/Gantt.vue')
+        },
+        {
+          path: 'terminal',
+          name: 'terminal',
+          component: () => import('../views/TerminalDemo.vue')
+        },
+        {
+          path: 'commands',
+          name: 'commands',
+          component: () => import('../views/Command.vue')
+        },
+        {
+          path: 'cat',
+          name: 'cat',
+          component: () => import('../views/AgentCat.vue')
+        }
+      ]
+    }
+  ]
 })
 
 export default router

@@ -3,10 +3,14 @@ import { createI18n } from 'vue-i18n'
 const messages = {
   en: {
     nav: {
-      dashboard: 'Dashboard',
+      home: 'Home',
       agents: 'Agents',
+      gantt: 'Gantt',
+      terminal: 'Terminal',
+      commands: 'Commands',
+      cat: 'Cat',
+      dashboard: 'Dashboard',
       board: 'Board',
-      command: 'Command',
       docs: 'Docs',
     },
     common: {
@@ -84,10 +88,14 @@ const messages = {
   },
   zh: {
     nav: {
-      dashboard: '总览',
+      home: '首页',
       agents: 'Agent 团队',
+      gantt: '甘特图',
+      terminal: '终端',
+      commands: '指令中心',
+      cat: '猫咪',
+      dashboard: '总览',
       board: '看板',
-      command: '指令中心',
       docs: '文档',
     },
     common: {
