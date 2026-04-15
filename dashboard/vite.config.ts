@@ -16,6 +16,16 @@ export default defineConfig({
       '@': resolve(__dirname, 'src'),
     },
   },
+  server: {
+    port: 5173,
+    proxy: {
+      '/api': 'http://127.0.0.1:19800',
+      '/ws': {
+        target: 'ws://127.0.0.1:19800',
+        ws: true,
+      },
+    },
+  },
   build: {
     rollupOptions: {
       output: {
