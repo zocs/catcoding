@@ -1,6 +1,7 @@
 use std::collections::VecDeque;
 use std::sync::Mutex;
 use chrono::Utc;
+use tracing_subscriber::field::Visit;
 
 /// Ring buffer for capturing recent log entries
 pub struct LogBuffer {
@@ -69,8 +70,6 @@ where
         event: &tracing::Event<'_>,
         _ctx: tracing_subscriber::layer::Context<'_, S>,
     ) {
-        use tracing_subscriber::field::Visit;
-
         let mut visitor = MessageVisitor(String::new());
         event.record(&mut visitor);
 

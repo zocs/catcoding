@@ -26,7 +26,7 @@ impl SkillCrystallizer {
     ) -> Result<Skill> {
         if execution_steps.len() < self.min_steps {
             return Err(anyhow::anyhow!(
-                "执行步骤太少 ({} < {})，不值得结晶",
+                "Too few steps ({} < {}), not worth crystallizing",
                 execution_steps.len(),
                 self.min_steps
             ));
@@ -120,7 +120,7 @@ impl SkillCrystallizer {
 
         for step in steps {
             let lower = step.to_lowercase();
-            if lower.contains("require") || lower.contains("need") || lower.contains("前提") {
+            if lower.contains("require") || lower.contains("need") || lower.contains("prerequisite") {
                 prereqs.push(step.clone());
             }
         }
@@ -135,8 +135,8 @@ impl SkillCrystallizer {
         for step in steps {
             let lower = step.to_lowercase();
             if lower.contains("⚠️")
-                || lower.contains("注意")
-                || lower.contains("坑")
+                || lower.contains("caution")
+                || lower.contains("pitfall")
                 || lower.contains("error")
                 || lower.contains("fail")
             {

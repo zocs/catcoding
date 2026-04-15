@@ -224,7 +224,7 @@ onMounted(fetchData)
 }
 
 .agent-mini:hover {
-  background: #faf7f2;
+  background: var(--cc-bg);
 }
 
 .agent-mini-info {

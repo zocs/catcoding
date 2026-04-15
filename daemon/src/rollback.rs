@@ -125,7 +125,7 @@ impl RollbackManager {
         let json = serde_json::to_string_pretty(&checkpoint)?;
         std::fs::write(&path, json)?;
 
-        tracing::info!("📸 创建检查点: {} (任务: {})", checkpoint_id, task_id);
+        tracing::info!("Checkpoint created: {} (task: {})", checkpoint_id, task_id);
 
         Ok(checkpoint_id)
     }
@@ -135,7 +135,7 @@ impl RollbackManager {
         let checkpoints = self.checkpoints.read().await;
         let checkpoint = checkpoints
             .get(checkpoint_id)
-            .ok_or_else(|| anyhow::anyhow!("检查点不存在: {}", checkpoint_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Checkpoint not found: {}", checkpoint_id))?;
 
         let mut restored_files = Vec::new();
 
@@ -143,11 +143,11 @@ impl RollbackManager {
             // 恢复文件内容
             std::fs::write(&snapshot.path, &snapshot.content)?;
             restored_files.push(snapshot.path.clone());
-            tracing::info!("🔄 恢复文件: {}", snapshot.path);
+            tracing::info!("Restoring file: {}", snapshot.path);
         }
 
         tracing::info!(
-            "⏪ 回滚完成: {} (恢复 {} 个文件)",
+            "Rollback complete: {} (restored {} files)",
             checkpoint_id,
             restored_files.len()
         );
@@ -209,7 +209,7 @@ impl RollbackManager {
                 // 回滚后重试
                 self.rollback(checkpoint_id).await?;
                 Ok(format!(
-                    "已回滚，将在同 Agent 重试 (上限 {} 次)",
+                    "Rolled back, retrying same agent (limit {})",
                     max_attempts
                 ))
             }
@@ -217,13 +217,13 @@ impl RollbackManager {
                 // 回滚后换 Agent
                 self.rollback(checkpoint_id).await?;
                 Ok(format!(
-                    "已回滚，将换 Agent 重试 (上限 {} 次)",
+                    "Rolled back, retrying different agent (limit {})",
                     max_attempts
                 ))
             }
-            RecoveryStrategy::SplitAndRetry => Ok("任务需拆分，通知 PM".to_string()),
-            RecoveryStrategy::EscalatePM => Ok("升级到 PM Agent 处理".to_string()),
-            RecoveryStrategy::EscalateHuman => Ok("升级到用户处理".to_string()),
+            RecoveryStrategy::SplitAndRetry => Ok("Task needs splitting, notifying PM".to_string()),
+            RecoveryStrategy::EscalatePM => Ok("Escalating to PM Agent".to_string()),
+            RecoveryStrategy::EscalateHuman => Ok("Escalating to user".to_string()),
         }
     }
 
@@ -245,7 +245,7 @@ impl RollbackManager {
         }
 
         if cleaned > 0 {
-            tracing::info!("🧹 清理了 {} 个旧检查点", cleaned);
+            tracing::info!("Cleaned {} old checkpoints", cleaned);
         }
 
         Ok(cleaned)

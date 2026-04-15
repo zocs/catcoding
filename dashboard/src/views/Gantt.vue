@@ -2,8 +2,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { NPageHeader, NCard, NTag, NSpace, NButton, useMessage } from 'naive-ui'
 import { useI18n } from 'vue-i18n'
+import { useResponsive } from '@/composables/useResponsive'
 
 const { t } = useI18n()
+const { isMobile, contentWidth } = useResponsive()
+
+// 动态列宽：移动端 40px，平板 50px，桌面 60px
+const dayWidth = computed(() => {
+  if (contentWidth.value < 400) return 36
+  if (contentWidth.value < 640) return 44
+  return 60
+})
 
 interface Task {
   id: string
@@ -83,26 +92,62 @@ onMounted(refresh)
 </script>
 
 <template>
-  <div class="gantt-page">
-    <n-page-header :title="'📊 ' + t('gantt.title')" :subtitle="t('gantt.subtitle')">
+  <div class="gantt-page" :class="{ mobile: isMobile }">
+    <n-page-header :title="isMobile ? '📊 甘特图' : '📊 ' + t('gantt.title')" :subtitle="isMobile ? '' : t('gantt.subtitle')">
       <template #extra>
-        <n-button @click="refresh" round>🔄 {{ t('gantt.refresh') }}</n-button>
+        <n-button @click="refresh" round :size="isMobile ? 'small' : 'medium'">
+          🔄 <span v-if="!isMobile">{{ t('gantt.refresh') }}</span>
+        </n-button>
       </template>
     </n-page-header>
 
-    <n-card style="margin-top: 24px" class="gantt-card">
+    <!-- 移动端：卡片列表视图 -->
+    <div v-if="isMobile" class="gantt-mobile-list">
+      <div
+        v-for="task in tasks"
+        :key="task.id"
+        class="gantt-mobile-card"
+        :class="[`status-${task.status}`]"
+      >
+        <div class="mobile-card-top">
+          <span class="mobile-emoji">{{ task.cat_emoji }}</span>
+          <div class="mobile-info">
+            <div class="mobile-title">{{ task.title }}</div>
+            <div class="mobile-meta">{{ task.cat_name }}</div>
+          </div>
+          <span class="mobile-status" :style="{ color: task.color }">
+            {{ statusEmoji[task.status] }}
+          </span>
+        </div>
+        <div class="mobile-bar-track">
+          <div
+            class="mobile-bar"
+            :style="{
+              width: `${(task.duration / totalDays) * 100}%`,
+              left: `${(task.start / totalDays) * 100}%`,
+              background: task.color,
+            }"
+          >
+            {{ task.duration }}d
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 桌面端：传统甘特图 -->
+    <n-card v-else style="margin-top: 24px" class="gantt-card">
       <!-- 时间标尺 -->
       <div class="time-ruler">
         <div class="ruler-label">{{ t('gantt.title') }}</div>
         <div class="ruler-days">
-          <div v-for="d in totalDays" :key="d" class="ruler-day" :class="{ today: d - 1 === today }">
-            Day {{ d - 1 }}
+          <div v-for="d in totalDays" :key="d" class="ruler-day" :class="{ today: d - 1 === today }" :style="{ width: dayWidth + 'px', minWidth: dayWidth + 'px' }">
+            D{{ d - 1 }}
           </div>
         </div>
       </div>
 
       <!-- 今日线 -->
-      <div class="today-line" :style="{ left: `calc(200px + ${today} * 60px + 30px)` }">
+      <div class="today-line" :style="{ left: `calc(200px + ${today} * ${dayWidth}px + ${dayWidth / 2}px)` }">
         <span class="today-label">{{ t('gantt.today') }}</span>
       </div>
 
@@ -120,8 +165,8 @@ onMounted(refresh)
             class="bar"
             :class="[`status-${task.status}`]"
             :style="{
-              left: `${task.start * 60}px`,
-              width: `${task.duration * 60 - 4}px`,
+              left: `${task.start * dayWidth}px`,
+              width: `${task.duration * dayWidth - 4}px`,
               background: task.color,
             }"
           >
@@ -144,21 +189,22 @@ onMounted(refresh)
 
 <style scoped>
 .gantt-page { padding: 16px; }
+.gantt-page.mobile { padding: 8px; }
 
 .gantt-card {
   border-radius: 16px;
   overflow: hidden;
 }
 
-/* 时间标尺 */
+/* ═══ 桌面端甘特图 ═══ */
 .time-ruler {
   display: flex;
-  border-bottom: 2px solid var(--border-color);
+  border-bottom: 2px solid var(--cc-border);
   padding-bottom: 8px;
   margin-bottom: 8px;
   position: sticky;
   top: 0;
-  background: var(--bg-card);
+  background: var(--cc-bg-card);
   z-index: 2;
 }
 
@@ -167,7 +213,7 @@ onMounted(refresh)
   min-width: 200px;
   font-weight: bold;
   font-size: 13px;
-  color: var(--text-muted);
+  color: var(--cc-fg-muted);
   display: flex;
   align-items: center;
 }
@@ -180,28 +226,25 @@ onMounted(refresh)
 }
 
 .ruler-day {
-  width: 60px;
-  min-width: 60px;
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--cc-fg-muted);
   text-align: center;
-  border-left: 1px solid var(--border-color);
+  border-left: 1px solid var(--cc-border);
   padding: 4px 0;
 }
 
 .ruler-day.today {
-  color: var(--accent-orange);
+  color: var(--cc-orange);
   font-weight: bold;
   background: rgba(245, 166, 35, 0.08);
 }
 
-/* 今日线 */
 .today-line {
   position: absolute;
   top: 40px;
   bottom: 20px;
   width: 2px;
-  background: #f5a623;
+  background: var(--cc-orange);
   z-index: 1;
   pointer-events: none;
   opacity: 0.6;
@@ -213,14 +256,13 @@ onMounted(refresh)
   left: -16px;
   font-size: 11px;
   white-space: nowrap;
-  color: var(--accent-orange);
+  color: var(--cc-orange);
 }
 
-/* Task row */
 .gantt-row {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid var(--border-color);
+  border-bottom: 1px solid var(--cc-border);
   min-height: 48px;
   transition: background 0.2s;
 }
@@ -253,10 +295,9 @@ onMounted(refresh)
 
 .row-meta {
   font-size: 11px;
-  color: var(--text-muted);
+  color: var(--cc-fg-muted);
 }
 
-/* 甘特条 */
 .row-bar-area {
   flex: 1;
   position: relative;
@@ -303,13 +344,12 @@ onMounted(refresh)
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 }
 
-/* 图例 */
 .legend {
   display: flex;
   gap: 16px;
   margin-top: 20px;
   padding-top: 12px;
-  border-top: 1px solid #eee;
+  border-top: 1px solid var(--cc-border);
   flex-wrap: wrap;
 }
 
@@ -318,7 +358,7 @@ onMounted(refresh)
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #888;
+  color: var(--cc-fg-muted);
 }
 
 .legend-dot {
@@ -327,18 +367,87 @@ onMounted(refresh)
   border-radius: 3px;
 }
 
-/* 响应式 */
-@media (max-width: 768px) {
-  .ruler-label, .row-label { width: 120px; min-width: 120px; }
-  .row-title { font-size: 11px; }
-  .ruler-day { width: 50px; min-width: 50px; font-size: 10px; }
-  .bar { height: 22px; }
-  .bar-label { font-size: 9px; }
+/* ═══ 移动端卡片视图 ═══ */
+.gantt-mobile-list {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
-@media (max-width: 480px) {
-  .ruler-label, .row-label { width: 80px; min-width: 80px; }
-  .row-emoji { display: none; }
-  .row-meta { display: none; }
+.gantt-mobile-card {
+  background: var(--cc-bg-card);
+  border: 1px solid var(--cc-border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  transition: all 0.2s;
+}
+
+.gantt-mobile-card:active {
+  transform: scale(0.98);
+}
+
+.mobile-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mobile-emoji {
+  font-size: 20px;
+  flex-shrink: 0;
+}
+
+.mobile-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.mobile-title {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mobile-meta {
+  font-size: 11px;
+  color: var(--cc-fg-muted);
+}
+
+.mobile-status {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.mobile-bar-track {
+  margin-top: 6px;
+  height: 18px;
+  background: var(--cc-border);
+  border-radius: 9px;
+  position: relative;
+  overflow: hidden;
+}
+
+.mobile-bar {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding-right: 6px;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  min-width: 28px;
+}
+
+.mobile-bar.status-done { opacity: 0.7; }
+.mobile-bar.status-active {
+  animation: barPulse 2s ease-in-out infinite;
 }
 </style>

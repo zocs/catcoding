@@ -5,8 +5,10 @@ import { Agent, CatCodingApi, AGENT_ROLES_FIXED } from '@/api/types'
 import CatAvatarSVG from '@/components/CatAvatarSVG.vue'
 import EasterEgg from '@/components/EasterEgg.vue'
 import { useI18n } from 'vue-i18n'
+import { useResponsive } from '@/composables/useResponsive'
 
 const { t } = useI18n()
+const { isMobile, gridCols, avatarSize, cardPadding } = useResponsive()
 
 const api = new CatCodingApi()
 const message = useMessage()
@@ -15,7 +17,6 @@ const loading = ref(false)
 const easterEggRef = ref<InstanceType<typeof EasterEgg> | null>(null)
 const selectedAgent = ref<string | null>(null)
 const feedCount = ref<Record<string, number>>({})
-const windowWidth = ref(window.innerWidth)
 
 // 吉祥物点击追踪
 const mascotClicks = ref<Record<string, number>>({})
@@ -51,25 +52,8 @@ const MASCOT_REACTIONS: Record<number, { msg: string; mood: string; trigger?: st
   15: { msg: '✨ 传说中的金色大熊猫出现了！！', mood: 'golden', trigger: 'golden_panda' },
 }
 
-// 响应式列数
-const gridCols = computed(() => {
-  if (windowWidth.value < 480) return 1
-  if (windowWidth.value < 768) return 2
-  if (windowWidth.value < 1024) return 3
-  return 4
-})
-
-function onResize() {
-  windowWidth.value = window.innerWidth
-}
-
 onMounted(() => {
-  window.addEventListener('resize', onResize)
   fetchAgents()
-})
-
-onUnmounted(() => {
-  window.removeEventListener('resize', onResize)
 })
 
 async function fetchAgents() {
@@ -169,11 +153,11 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 </script>
 
 <template>
-  <div class="agents-page">
-    <n-page-header title="🐱 猫咪面板" subtitle="Agent 团队实时状态">
+  <div class="agents-page" :class="{ 'mobile': isMobile }">
+    <n-page-header :title="isMobile ? '🐱 猫咪面板' : '🐱 猫咪面板'" subtitle="Agent 团队实时状态">
       <template #extra>
         <n-space>
-          <n-button @click="fetchAgents" :loading="loading" round>
+          <n-button @click="fetchAgents" :loading="loading" round :size="isMobile ? 'small' : 'medium'">
             🔄 刷新
           </n-button>
         </n-space>
@@ -203,7 +187,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
               <CatAvatarSVG
                 :role="agent.role"
                 :status="agent.status"
-                :size="80"
+                :size="avatarSize"
                 :animated="agent.status === 'active'"
               />
             </div>
@@ -213,14 +197,14 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
                 <span class="agent-name">{{ agent.name }}</span>
                 <span class="agent-role-tag">@{{ agent.role }}</span>
               </div>
-              <div class="agent-desc">{{ agent.description }}</div>
+              <div class="agent-desc" v-if="!isMobile">{{ agent.description }}</div>
               <div class="agent-status">
                 <n-tag :type="getStatusType(agent.status)" size="small" round>
                   {{ getStatusLabel(agent.status) }}
                 </n-tag>
               </div>
               <div v-if="agent.current_task" class="current-task">
-                🔧 正在处理: <span class="task-id">#{{ agent.current_task }}</span>
+                🔧 <span class="task-id">#{{ agent.current_task }}</span>
               </div>
             </div>
           </div>
@@ -251,7 +235,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
             <div class="card-ear right"></div>
           </div>
           <div class="card-body">
-            <CatAvatarSVG :role="agent.role" :status="agent.status" :size="64" />
+            <CatAvatarSVG :role="agent.role" :status="agent.status" :size="isMobile ? 40 : 64" />
             <div class="agent-info">
               <div class="agent-name-row">
                 <span class="agent-name">{{ agent.name }}</span>
@@ -263,7 +247,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
                 </n-tag>
               </div>
               <div v-if="agent.current_task" class="current-task">
-                🔧 正在处理: <span class="task-id">#{{ agent.current_task }}</span>
+                🔧 <span class="task-id">#{{ agent.current_task }}</span>
               </div>
             </div>
           </div>
@@ -287,10 +271,10 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
           @click="feedAgent(agent.role)"
         >
           <div class="mascot-wrapper">
-            <CatAvatarSVG :role="agent.role" status="idle" :size="120" :animated="true" />
+            <CatAvatarSVG :role="agent.role" status="idle" :size="isMobile ? 80 : 120" :animated="true" />
             <div class="mascot-name">{{ agent.name }}</div>
             <div class="agent-role-tag">@{{ agent.role }}</div>
-            <div class="mascot-desc">{{ agent.description }}</div>
+            <div class="mascot-desc" v-if="!isMobile">{{ agent.description }}</div>
           </div>
         </div>
       </div>
@@ -303,11 +287,20 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 <style scoped>
 .agents-page {
   min-height: 100vh;
+  padding: 16px;
   padding-bottom: 40px;
+}
+
+.agents-page.mobile {
+  padding: 8px;
 }
 
 .agent-section {
   margin-top: 28px;
+}
+
+.mobile .agent-section {
+  margin-top: 16px;
 }
 
 .section-title {
@@ -315,7 +308,12 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   font-weight: bold;
   margin-bottom: 16px;
   padding-left: 8px;
-  border-left: 4px solid #f5a623;
+  border-left: 4px solid var(--cc-orange);
+}
+
+.mobile .section-title {
+  font-size: 15px;
+  margin-bottom: 10px;
 }
 
 /* ═══ 响应式网格 ═══ */
@@ -325,11 +323,15 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   gap: 16px;
 }
 
+.mobile .agent-grid {
+  gap: 10px;
+}
+
 /* ═══ Agent Card ═══ */
 .agent-card {
-  background: var(--bg-card);
+  background: var(--cc-bg-card);
   border-radius: 20px;
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--cc-border);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: visible;
@@ -338,8 +340,18 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
 .agent-card:hover {
   transform: translateY(-4px);
-  box-shadow: var(--card-hover-shadow);
-  border-color: var(--accent-orange);
+  box-shadow: var(--cc-shadow-hover);
+  border-color: var(--cc-orange);
+}
+
+/* 移动端去掉 hover 上浮（触屏无 hover） */
+.mobile .agent-card:hover {
+  transform: none;
+}
+
+.mobile .agent-card:active {
+  transform: scale(0.97);
+  transition: transform 0.1s;
 }
 
 /* 猫耳朵 CSS 装饰 */
@@ -355,12 +367,16 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   z-index: 2;
 }
 
+.mobile .card-ears {
+  padding: 0 16px;
+}
+
 .card-ear {
   width: 0;
   height: 0;
   border-left: 10px solid transparent;
   border-right: 10px solid transparent;
-  border-bottom: 14px solid #f5a623;
+  border-bottom: 14px solid var(--cc-orange);
   transition: transform 0.3s;
 }
 
@@ -379,10 +395,9 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   gap: 12px;
 }
 
-.compact-body {
-  flex-direction: row;
-  gap: 12px;
-  padding: 16px 12px 8px;
+.mobile .card-body {
+  padding: 16px 10px 8px;
+  gap: 6px;
 }
 
 .avatar-wrapper {
@@ -407,15 +422,24 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   font-size: 16px;
 }
 
+.mobile .agent-name {
+  font-size: 14px;
+}
+
 .agent-role-tag {
   font-family: monospace;
   font-size: 14px;
   font-weight: 600;
   opacity: 1;
-  color: var(--text-primary);
-  background: rgba(245, 166, 35, 0.08);
+  color: var(--cc-fg);
+  background: rgba(249, 115, 22, 0.08);
   padding: 1px 8px;
   border-radius: 10px;
+}
+
+.mobile .agent-role-tag {
+  font-size: 11px;
+  padding: 1px 5px;
 }
 
 .agent-desc {
@@ -429,26 +453,25 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   margin-top: 8px;
 }
 
+.mobile .agent-status {
+  margin-top: 4px;
+}
+
 .current-task {
   margin-top: 8px;
   font-size: 13px;
   opacity: 0.85;
 }
 
+.mobile .current-task {
+  margin-top: 4px;
+  font-size: 12px;
+}
+
 .current-task .task-id {
-  color: #f5a623;
+  color: var(--cc-orange);
   font-weight: bold;
   font-family: monospace;
-}
-
-.compact-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.compact-task {
-  margin-top: 2px;
 }
 
 /* 投喂按钮 */
@@ -458,9 +481,13 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   justify-content: center;
 }
 
+.mobile .card-footer {
+  padding: 4px 8px 8px;
+}
+
 .feed-btn {
-  background: linear-gradient(135deg, #e8f5e9 0%, #fff8e1 100%);
-  border: 1px solid #c8e6c9;
+  background: var(--cc-bg-input);
+  border: 1px solid var(--cc-border);
   border-radius: 20px;
   padding: 6px 16px;
   font-size: 13px;
@@ -468,28 +495,28 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   transition: all 0.2s;
 }
 
+.mobile .feed-btn {
+  padding: 4px 12px;
+  font-size: 12px;
+}
+
 .feed-btn:hover {
   transform: scale(1.1);
-  background: linear-gradient(135deg, #c8e6c9 0%, #ffecb3 100%);
+  background: var(--cc-bg-hover);
 }
 
 .feed-btn:active {
   transform: scale(0.95);
 }
 
-.feed-btn.small {
-  padding: 4px 10px;
-  font-size: 11px;
-}
-
 /* 吉祥物卡片 */
 .mascot-card {
-  background: linear-gradient(135deg, #faf7f2 0%, #fff5f5 100%);
-  border-color: #ffcdd2;
+  background: var(--cc-bg-card);
+  border-color: var(--cc-border);
 }
 
 .mascot-card:hover {
-  border-color: #ef9a9a;
+  border-color: var(--cc-orange);
 }
 
 .mascot-wrapper {
@@ -500,47 +527,23 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   gap: 12px;
 }
 
+.mobile .mascot-wrapper {
+  padding: 16px 10px;
+  gap: 8px;
+}
+
 .mascot-name {
-  font-size: 18px;
   font-weight: bold;
+  font-size: 18px;
+}
+
+.mobile .mascot-name {
+  font-size: 15px;
 }
 
 .mascot-desc {
-  font-size: 12px;
-  opacity: 0.5;
+  font-size: 13px;
+  opacity: 0.7;
   text-align: center;
-}
-
-/* ═══ 响应式断点 ═══ */
-@media (max-width: 480px) {
-  .agent-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .card-body {
-    padding: 20px 12px 8px;
-  }
-
-  .agent-name {
-    font-size: 14px;
-  }
-
-  .agent-desc {
-    font-size: 11px;
-  }
-}
-
-@media (min-width: 481px) and (max-width: 768px) {
-  .agent-grid {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 12px;
-  }
-}
-
-@media (min-width: 769px) and (max-width: 1024px) {
-  .agent-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
 }
 </style>

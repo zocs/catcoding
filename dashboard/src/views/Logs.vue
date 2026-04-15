@@ -140,77 +140,109 @@ onUnmounted(() => {
   display: flex;
   flex-direction: column;
   height: calc(100vh - 80px);
+  padding: 8px 12px;
 }
 .logs-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 .logs-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 18px;
 }
 .logs-controls {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
 }
 .logs-body {
   flex: 1;
   overflow-y: auto;
-  background: #1e1e2e;
+  background: var(--cc-bg-sider);
   border-radius: 8px;
-  padding: 12px;
+  padding: 8px;
   font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px;
-  line-height: 1.6;
+  font-size: 12px;
+  line-height: 1.5;
+  -webkit-overflow-scrolling: touch; /* iOS 平滑滚动 */
 }
 .logs-empty {
-  color: #666;
+  color: var(--cc-fg-secondary);
   text-align: center;
   padding: 40px;
 }
 .log-entry {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   padding: 2px 0;
   border-bottom: 1px solid #2a2a3a;
 }
 .log-entry:hover {
-  background: #2a2a3a;
+  background: var(--cc-bg-card);
 }
 .log-time {
-  color: #666;
-  min-width: 70px;
+  color: var(--cc-fg-secondary);
+  min-width: 60px;
   flex-shrink: 0;
+  font-size: 11px;
 }
 .log-level {
-  min-width: 50px;
+  min-width: 45px;
   flex-shrink: 0;
   font-weight: bold;
+  font-size: 11px;
 }
-.level-error { color: #f38ba8; }
-.level-warn  { color: #fab387; }
-.level-info  { color: #a6e3a1; }
-.level-debug { color: #89b4fa; }
-.level-trace { color: #cba6f7; }
+.level-error { color: var(--cc-error); }
+.level-warn  { color: var(--cc-warning); }
+.level-info  { color: var(--cc-success); }
+.level-debug { color: var(--cc-blue); }
+.level-trace { color: var(--cc-purple); }
 .log-target {
-  color: #585b70;
-  min-width: 140px;
+  color: var(--cc-fg-muted);
+  min-width: 80px;
+  max-width: 140px;
   flex-shrink: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-size: 11px;
 }
 .log-msg {
-  color: #cdd6f4;
+  color: var(--cc-fg);
   word-break: break-all;
+  font-size: 12px;
 }
 .logs-footer {
-  margin-top: 8px;
-  color: #666;
-  font-size: 12px;
+  margin-top: 6px;
+  color: var(--cc-fg-secondary);
+  font-size: 11px;
   text-align: right;
+}
+
+/* 移动端 */
+@media (max-width: 767px) {
+  .logs-page {
+    height: calc(100vh - 110px); /* 减去移动端顶部栏 */
+    padding: 4px 8px;
+  }
+  .logs-header h2 {
+    font-size: 16px;
+  }
+  .log-target {
+    display: none; /* 移动端隐藏 target 列，太占空间 */
+  }
+  .log-time {
+    min-width: 50px;
+    font-size: 10px;
+  }
+  .log-level {
+    min-width: 38px;
+    font-size: 10px;
+  }
 }
 </style>

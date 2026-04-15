@@ -138,7 +138,7 @@ impl DependencyGraph {
         }
 
         if result.len() != self.dependencies.len() {
-            return Err(anyhow::anyhow!("存在循环依赖"));
+            return Err(anyhow::anyhow!("Circular dependency detected"));
         }
 
         Ok(result)
@@ -181,7 +181,7 @@ impl CascadeHandler {
 
         // 检查循环依赖
         if graph.has_cycle() {
-            tracing::error!("⚠️ 检测到循环依赖！");
+            tracing::error!("Circular dependency detected!");
         }
     }
 
@@ -260,7 +260,7 @@ impl CascadeHandler {
                     if let Some(task) = tasks.iter_mut().find(|t| t.id == dep_id) {
                         task.status = TaskStatus::Ready;
                         affected.push(dep_id.clone());
-                        tracing::info!("🟢 任务 {} 状态变为 Ready", dep_id);
+                        tracing::info!("Task {} status changed to Ready", dep_id);
                     }
                 }
             }
@@ -273,7 +273,7 @@ impl CascadeHandler {
                         if task.status != TaskStatus::Done {
                             task.status = TaskStatus::Blocked;
                             affected.push(dep_id.clone());
-                            tracing::warn!("🚫 任务 {} 被阻塞", dep_id);
+                            tracing::warn!("Task {} is blocked", dep_id);
                         }
                     }
                 }
@@ -313,7 +313,7 @@ impl CascadeHandler {
     pub async fn generate_report(&self, tasks: &[Task]) -> String {
         let graph = self.graph.read().await;
 
-        let mut report = String::from("📊 依赖关系报告\n\n");
+        let mut report = String::from("Dependency Report\n\n");
 
         for task in tasks {
             let deps = graph.get_dependencies(&task.id);
@@ -321,16 +321,16 @@ impl CascadeHandler {
 
             report.push_str(&format!("{} {}\n", task.id, task.title));
             if !deps.is_empty() {
-                report.push_str(&format!("  依赖: {}\n", deps.join(", ")));
+                report.push_str(&format!("  Depends on: {}\n", deps.join(", ")));
             }
             if !dependents.is_empty() {
-                report.push_str(&format!("  被依赖: {}\n", dependents.join(", ")));
+                report.push_str(&format!("  Depended by: {}\n", dependents.join(", ")));
             }
         }
 
         // 检查循环
         if graph.has_cycle() {
-            report.push_str("\n⚠️ 警告: 存在循环依赖！\n");
+            report.push_str("\nWARNING: Circular dependency exists!\n");
         }
 
         report

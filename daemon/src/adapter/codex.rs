@@ -61,7 +61,7 @@ impl CodexAdapter {
 
         // 添加指令
         let instruction = format!(
-            "项目: {}\n角色: {}\n任务: {}\n工作目录: {}",
+            "Project: {}\nRole: {}\nTask: {}\nWorkdir: {}",
             context.project_id, context.role, context.task_description, context.working_dir
         );
         args.push("--instruction".to_string());
@@ -79,13 +79,13 @@ impl AgentAdapter for CodexAdapter {
 
     async fn spawn(&self, context: AgentContext) -> Result<AgentHandle> {
         tracing::info!(
-            "🤖 启动 Codex Agent: role={}, project={}",
+            "Starting Codex Agent: role={}, project={}",
             context.role,
             context.project_id
         );
 
         let args = self.build_args(&context);
-        tracing::debug!("codex 命令: {} {:?}", self.config.binary_path, args);
+        tracing::debug!("codex command: {} {:?}", self.config.binary_path, args);
 
         let mut cmd = Command::new(&self.config.binary_path);
         cmd.args(&args)
@@ -103,7 +103,7 @@ impl AgentAdapter for CodexAdapter {
 
         let child = cmd.spawn()?;
         let pid = child.id();
-        tracing::info!("✅ Codex Agent 已启动, PID: {:?}", pid);
+        tracing::info!("Codex Agent started, PID: {:?}", pid);
 
         // 将子进程存储以便后续管理
         std::mem::forget(child);
@@ -116,7 +116,7 @@ impl AgentAdapter for CodexAdapter {
     }
 
     async fn send_task(&self, handle: &AgentHandle, task_description: &str) -> Result<()> {
-        tracing::info!("📝 向 Codex Agent {} 发送任务", handle.agent_id);
+        tracing::info!("Sending task to Codex Agent {}", handle.agent_id);
         // Codex 使用一次性执行模式，任务在 spawn 时已传入
         Ok(())
     }
@@ -126,13 +126,13 @@ impl AgentAdapter for CodexAdapter {
         Ok(Some(AgentOutput {
             agent_id: handle.agent_id.clone(),
             output_type: "info".to_string(),
-            content: "Codex 执行中...".to_string(),
+            content: "Codex executing...".to_string(),
             timestamp: chrono::Utc::now().to_rfc3339(),
         }))
     }
 
     async fn stop(&self, handle: &AgentHandle) -> Result<()> {
-        tracing::info!("🛑 停止 Codex Agent {}", handle.agent_id);
+        tracing::info!("Stopping Codex Agent {}", handle.agent_id);
         if let Some(pid) = handle.pid {
             unsafe {
                 libc::kill(pid as i32, libc::SIGTERM);
@@ -148,12 +148,12 @@ impl AgentAdapter for CodexAdapter {
                 Ok(HealthStatus::Healthy)
             } else {
                 Ok(HealthStatus::Unhealthy {
-                    reason: "进程不存在".to_string(),
+                    reason: "Process not found".to_string(),
                 })
             }
         } else {
             Ok(HealthStatus::Degraded {
-                reason: "无 PID 信息".to_string(),
+                reason: "No PID info".to_string(),
             })
         }
     }

@@ -74,7 +74,7 @@ impl AgentAdapter for HermesAdapter {
 
     async fn spawn(&self, context: AgentContext) -> Result<AgentHandle> {
         tracing::info!(
-            "🐱 启动 Python Agent: role={}, project={}, agent_id={}",
+            "Starting Python Agent: role={}, project={}, agent_id={}",
             context.role,
             context.project_id,
             context.agent_id
@@ -108,7 +108,7 @@ impl AgentAdapter for HermesAdapter {
             },
         );
 
-        tracing::info!("✅ Python Agent {} 已启动, PID: {:?}", agent_id, pid);
+        tracing::info!("Python Agent {} started, PID: {:?}", agent_id, pid);
 
         Ok(AgentHandle {
             agent_id,
@@ -119,7 +119,7 @@ impl AgentAdapter for HermesAdapter {
 
     async fn send_task(&self, handle: &AgentHandle, task_description: &str) -> Result<()> {
         tracing::info!(
-            "📨 发送任务给 Agent {}: {}",
+            "Sending task to Agent {}: {}",
             handle.agent_id,
             &task_description[..task_description.len().min(80)]
         );
@@ -127,7 +127,7 @@ impl AgentAdapter for HermesAdapter {
         let mut running = self.running.lock().await;
         let agent = running
             .get_mut(&handle.agent_id)
-            .ok_or_else(|| anyhow::anyhow!("Agent {} 未在运行", handle.agent_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Agent {} not running", handle.agent_id))?;
 
         // 构造任务分配消息（与 Python Agent 的 AgentMessage 兼容）
         let msg = serde_json::json!({
@@ -144,9 +144,9 @@ impl AgentAdapter for HermesAdapter {
         if let Some(stdin) = agent.child.stdin.as_mut() {
             stdin.write_all(line.as_bytes()).await?;
             stdin.flush().await?;
-            tracing::debug!("📤 已写入 {} bytes 到 Agent stdin", line.len());
+            tracing::debug!("Wrote {} bytes to Agent stdin", line.len());
         } else {
-            anyhow::bail!("Agent {} stdin 已关闭", handle.agent_id);
+            anyhow::bail!("Agent {} stdin closed", handle.agent_id);
         }
 
         Ok(())
@@ -156,7 +156,7 @@ impl AgentAdapter for HermesAdapter {
         let mut running = self.running.lock().await;
         let agent = running
             .get_mut(&handle.agent_id)
-            .ok_or_else(|| anyhow::anyhow!("Agent {} 未在运行", handle.agent_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Agent {} not running", handle.agent_id))?;
 
         let mut line = String::new();
         let n = tokio::time::timeout(
@@ -196,7 +196,7 @@ impl AgentAdapter for HermesAdapter {
                 }))
             }
             Ok(Err(e)) => {
-                tracing::error!("读取 Agent {} stdout 错误: {}", handle.agent_id, e);
+                tracing::error!("Error reading Agent {} stdout: {}", handle.agent_id, e);
                 Ok(None)
             }
             Err(_) => {
@@ -207,7 +207,7 @@ impl AgentAdapter for HermesAdapter {
     }
 
     async fn stop(&self, handle: &AgentHandle) -> Result<()> {
-        tracing::info!("🛑 停止 Agent: {}", handle.agent_id);
+        tracing::info!("Stopping Agent: {}", handle.agent_id);
 
         let mut running = self.running.lock().await;
         if let Some(mut agent) = running.remove(&handle.agent_id) {
@@ -228,10 +228,10 @@ impl AgentAdapter for HermesAdapter {
             // 如果还活着就杀掉
             match agent.child.try_wait()? {
                 Some(status) => {
-                    tracing::info!("✅ Agent {} 已退出: {}", handle.agent_id, status);
+                    tracing::info!("Agent {} exited: {}", handle.agent_id, status);
                 }
                 None => {
-                    tracing::warn!("⚠️ Agent {} 未退出，发送 SIGKILL", handle.agent_id);
+                    tracing::warn!("Agent {} did not exit, sending SIGKILL", handle.agent_id);
                     agent.child.kill().await?;
                 }
             }
@@ -250,12 +250,12 @@ impl AgentAdapter for HermesAdapter {
                     Ok(HealthStatus::Healthy)
                 } else {
                     Ok(HealthStatus::Unhealthy {
-                        reason: format!("进程 {} 不存在", handle.pid.unwrap_or(0)),
+                        reason: format!("Process {} not found", handle.pid.unwrap_or(0)),
                     })
                 }
             }
             None => Ok(HealthStatus::Unhealthy {
-                reason: "Agent 未在运行".to_string(),
+                reason: "Agent not running".to_string(),
             }),
         }
     }
@@ -296,7 +296,7 @@ impl AgentLifecycleManager {
         let adapter = self
             .adapters
             .get(adapter_name)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", adapter_name))?;
+            .ok_or_else(|| anyhow::anyhow!("Adapter not found: {}", adapter_name))?;
 
         let handle = adapter.spawn(context.clone()).await?;
         self.handles
@@ -310,12 +310,12 @@ impl AgentLifecycleManager {
         let handle = self
             .handles
             .get(agent_id)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Agent not found: {}", agent_id))?;
 
         let adapter = self
             .adapters
             .get(&handle.adapter_type)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", handle.adapter_type))?;
+            .ok_or_else(|| anyhow::anyhow!("Adapter not found: {}", handle.adapter_type))?;
 
         adapter.send_task(handle, task).await
     }
@@ -325,12 +325,12 @@ impl AgentLifecycleManager {
         let handle = self
             .handles
             .get(agent_id)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Agent not found: {}", agent_id))?;
 
         let adapter = self
             .adapters
             .get(&handle.adapter_type)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", handle.adapter_type))?;
+            .ok_or_else(|| anyhow::anyhow!("Adapter not found: {}", handle.adapter_type))?;
 
         adapter.get_output(handle).await
     }
@@ -340,12 +340,12 @@ impl AgentLifecycleManager {
         let handle = self
             .handles
             .get(agent_id)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Agent not found: {}", agent_id))?;
 
         let adapter = self
             .adapters
             .get(&handle.adapter_type)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", handle.adapter_type))?;
+            .ok_or_else(|| anyhow::anyhow!("Adapter not found: {}", handle.adapter_type))?;
 
         adapter.stop(handle).await
     }
@@ -355,12 +355,12 @@ impl AgentLifecycleManager {
         let handle = self
             .handles
             .get(agent_id)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Agent: {}", agent_id))?;
+            .ok_or_else(|| anyhow::anyhow!("Agent not found: {}", agent_id))?;
 
         let adapter = self
             .adapters
             .get(&handle.adapter_type)
-            .ok_or_else(|| anyhow::anyhow!("未找到 Adapter: {}", handle.adapter_type))?;
+            .ok_or_else(|| anyhow::anyhow!("Adapter not found: {}", handle.adapter_type))?;
 
         adapter.health_check(handle).await
     }
@@ -374,7 +374,7 @@ impl AgentLifecycleManager {
     pub async fn stop_all(&self) -> Result<()> {
         for (agent_id, handle) in &self.handles {
             if let Some(adapter) = self.adapters.get(&handle.adapter_type) {
-                tracing::info!("🛑 停止 Agent: {}", agent_id);
+                tracing::info!("Stopping Agent: {}", agent_id);
                 let _ = adapter.stop(handle).await;
             }
         }

@@ -61,7 +61,7 @@ withDefaults(defineProps<Props>(), {
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+  background: linear-gradient(135deg, var(--cc-bg-sider) 0%, var(--cc-bg-input) 100%);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
@@ -101,35 +101,35 @@ withDefaults(defineProps<Props>(), {
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  border: 2px solid #1e1e2e;
+  border: 2px solid var(--cc-bg-sider);
 }
 
 .status-indicator.working {
-  background: #3498db;
+  background: var(--cc-blue);
   animation: pulse 1.5s infinite;
 }
 
 .status-indicator.idle {
-  background: #666;
+  background: var(--cc-fg-secondary);
 }
 
 .status-indicator.done {
-  background: #2ecc71;
+  background: var(--cc-accent);
 }
 
 .status-indicator.error {
-  background: #e74c3c;
+  background: var(--cc-red);
 }
 
 .status-indicator.restarting {
-  background: #f1c40f;
+  background: var(--cc-yellow);
   animation: spin 1s linear infinite;
 }
 
 /* 名字 */
 .avatar-name {
   font-size: 12px;
-  color: #888;
+  color: var(--cc-fg-muted);
   text-align: center;
 }
 

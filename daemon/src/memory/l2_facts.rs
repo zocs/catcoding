@@ -61,8 +61,8 @@ impl L2Facts {
     /// 保存 L2 事实
     fn save(&self) -> Result<()> {
         let mut content = String::new();
-        content.push_str("# L2 Facts — 环境事实\n");
-        content.push_str("# 核心原则: 只存验证过的环境特异性事实\n\n");
+        content.push_str("# L2 Facts — Environment\n");
+        content.push_str("# Core: only verified environment-specific facts\n\n");
 
         let mut sections: Vec<_> = self.sections.keys().collect();
         sections.sort();

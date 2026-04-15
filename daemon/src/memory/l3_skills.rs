@@ -24,26 +24,26 @@ impl Skill {
         let mut ctx = format!("# Skill: {}\n", self.name);
 
         if !self.prerequisites.is_empty() {
-            ctx.push_str("\n## 前置条件\n");
+            ctx.push_str("\n## Prerequisites\n");
             for p in &self.prerequisites {
                 ctx.push_str(&format!("- {}\n", p));
             }
         }
 
-        ctx.push_str("\n## 执行步骤\n");
+        ctx.push_str("\n## Steps\n");
         for (i, step) in self.steps.iter().enumerate() {
             ctx.push_str(&format!("{}. {}\n", i + 1, step));
         }
 
         if !self.pitfalls.is_empty() {
-            ctx.push_str("\n## ⚠️ 已知坑点\n");
+            ctx.push_str("\n## ⚠️ Known Pitfalls\n");
             for p in &self.pitfalls {
                 ctx.push_str(&format!("- {}\n", p));
             }
         }
 
         ctx.push_str(&format!(
-            "\n## 来源\n- 首次执行: {}\n- 成功次数: {}\n",
+            "\n## Source\n- First run: {}\n- Success count: {}\n",
             self.created_at, self.success_count
         ));
 
@@ -53,30 +53,30 @@ impl Skill {
     /// 转换为 Markdown 文件内容
     pub fn to_markdown(&self) -> String {
         let mut md = format!("# {}\n\n", self.name);
-        md.push_str(&format!("> 来源任务: {}\n", self.source_task));
-        md.push_str(&format!("> 创建时间: {}\n", self.created_at));
-        md.push_str(&format!("> 成功次数: {}\n\n", self.success_count));
+        md.push_str(&format!("> Source task: {}\n", self.source_task));
+        md.push_str(&format!("> Created: {}\n", self.created_at));
+        md.push_str(&format!("> Success count: {}\n\n", self.success_count));
 
-        md.push_str("## 触发条件\n");
-        md.push_str(&format!("- 场景: {}\n", self.trigger_scene));
+        md.push_str("## Trigger\n");
+        md.push_str(&format!("- Scene: {}\n", self.trigger_scene));
         for kw in &self.trigger_keywords {
-            md.push_str(&format!("- 关键词: {}\n", kw));
+            md.push_str(&format!("- Keywords: {}\n", kw));
         }
 
         if !self.prerequisites.is_empty() {
-            md.push_str("\n## 前置条件\n");
+            md.push_str("\n## Prerequisites\n");
             for p in &self.prerequisites {
                 md.push_str(&format!("- {}\n", p));
             }
         }
 
-        md.push_str("\n## 执行步骤\n");
+        md.push_str("\n## Steps\n");
         for (i, step) in self.steps.iter().enumerate() {
             md.push_str(&format!("{}. {}\n", i + 1, step));
         }
 
         if !self.pitfalls.is_empty() {
-            md.push_str("\n## ⚠️ 已知坑点\n");
+            md.push_str("\n## ⚠️ Known Pitfalls\n");
             for p in &self.pitfalls {
                 md.push_str(&format!("- {}\n", p));
             }
@@ -120,7 +120,7 @@ impl L3Skills {
                 }
             }
         }
-        tracing::info!("📚 加载了 {} 个 Skill", self.skills.len());
+        tracing::info!("Loaded {} skills", self.skills.len());
         Ok(())
     }
 

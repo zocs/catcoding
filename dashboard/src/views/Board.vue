@@ -4,6 +4,9 @@ import { NPageHeader, NSpace, NCard, NTag, NBadge, NButton, NScrollbar, NEmpty, 
 import { Task, TaskStatus, KANBAN_COLUMNS, STATUS_CONFIG, CatCodingApi, AGENT_ROLES_FIXED } from '@/api/types'
 import CatAvatar from '@/components/CatAvatar.vue'
 import EasterEgg from '@/components/EasterEgg.vue'
+import { useResponsive } from '@/composables/useResponsive'
+
+const { isMobile, kanbanMode } = useResponsive()
 
 const api = new CatCodingApi()
 const message = useMessage()
@@ -119,21 +122,23 @@ onMounted(fetchTasks)
 </script>
 
 <template>
-  <div class="board-page" @click="addPawPrint">
+  <div class="board-page" :class="{ mobile: isMobile }" @click="addPawPrint">
     <n-page-header title="🐱 任务看板" subtitle="猫咪团队的做菜进度">
       <template #extra>
         <n-space>
-          <n-button @click="fetchTasks" :loading="loading" round>
-            🔄 刷新
+          <n-button @click="fetchTasks" :loading="loading" round :size="isMobile ? 'small' : 'medium'">
+            🔄
+            <span v-if="!isMobile"> 刷新</span>
           </n-button>
-          <n-button type="primary" @click="showCreateTask = true" round>
-            ➕ 创建任务
+          <n-button type="primary" @click="showCreateTask = true" round :size="isMobile ? 'small' : 'medium'">
+            ➕
+            <span v-if="!isMobile"> 创建任务</span>
           </n-button>
         </n-space>
       </template>
     </n-page-header>
 
-    <div class="kanban-container">
+    <div class="kanban-container" :class="'mode-' + kanbanMode">
       <div
         v-for="col in KANBAN_COLUMNS"
         :key="col.key"
@@ -282,28 +287,49 @@ onMounted(fetchTasks)
   padding-bottom: 16px;
 }
 
+/* 移动端：看板列垂直堆叠 */
+.kanban-container.mode-stack {
+  flex-direction: column;
+  overflow-x: visible;
+}
+
+.kanban-container.mode-stack .kanban-column {
+  min-width: 0;
+  width: 100%;
+}
+
+/* 平板：水平滚动 */
+.kanban-container.mode-scroll {
+  gap: 12px;
+}
+
+.kanban-container.mode-scroll .kanban-column {
+  min-width: 260px;
+  flex: 0 0 260px;
+}
+
 /* Kanban column */
 .kanban-column {
   min-width: 280px;
   flex: 1;
-  background: var(--bg-card);
+  background: var(--cc-bg-card);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
-  border: 2px solid var(--border-color);
+  border: 2px solid var(--cc-border);
   transition: all 0.3s ease;
   position: relative;
 }
 
 .kanban-column.drag-over {
-  border-color: var(--accent-orange);
+  border-color: var(--cc-orange);
   box-shadow: 0 0 20px rgba(245, 166, 35, 0.3);
   transform: scale(1.02);
 }
 
 .column-header {
   padding: 16px;
-  border-bottom: 2px dashed #e8e0d4;
+  border-bottom: 2px dashed var(--cc-border);
   background: rgba(255, 255, 255, 0.6);
   border-radius: 16px 16px 0 0;
 }
@@ -320,10 +346,10 @@ onMounted(fetchTasks)
 
 /* Task card */
 .task-card {
-  background: var(--bg-page);
+  background: var(--cc-bg);
   border-radius: 12px;
   padding: 14px;
-  border: 1px solid var(--border-color);
+  border: 1px solid var(--cc-border);
   cursor: grab;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
@@ -332,7 +358,7 @@ onMounted(fetchTasks)
 .task-card:hover {
   transform: translateY(-4px) rotate(0.5deg);
   box-shadow: 0 8px 24px rgba(245, 166, 35, 0.15);
-  border-color: #f5a623;
+  border-color: var(--cc-orange);
 }
 
 .task-card:active {
@@ -363,7 +389,7 @@ onMounted(fetchTasks)
   height: 0;
   border-left: 8px solid transparent;
   border-right: 8px solid transparent;
-  border-bottom: 12px solid #f5a623;
+  border-bottom: 12px solid var(--cc-orange);
 }
 
 .ear-left {
@@ -404,13 +430,13 @@ onMounted(fetchTasks)
 }
 
 .task-footer {
-  border-top: 1px dashed #eee;
+  border-top: 1px dashed var(--cc-border);
   padding-top: 10px;
 }
 
 .agent-name {
   font-size: 13px;
-  color: #f5a623;
+  color: var(--cc-orange);
   font-weight: 500;
 }
 
@@ -459,5 +485,47 @@ onMounted(fetchTasks)
 @keyframes breathe {
   0%, 100% { transform: scale(1); }
   50% { transform: scale(1.05); }
+}
+
+/* ═══ 移动端覆盖 ═══ */
+.mobile .board-page {
+  padding: 8px;
+}
+
+.mobile .kanban-container {
+  margin-top: 12px;
+  gap: 10px;
+}
+
+.mobile .kanban-column {
+  border-radius: 12px;
+}
+
+.mobile .column-header {
+  padding: 10px 12px;
+}
+
+.mobile .column-header .title {
+  font-size: 14px;
+}
+
+.mobile .column-content {
+  padding: 8px;
+}
+
+.mobile .task-card {
+  padding: 10px;
+}
+
+.mobile .task-title {
+  font-size: 13px;
+}
+
+.mobile .task-desc {
+  font-size: 12px;
+}
+
+.mobile .cat-ears {
+  display: none; /* 移动端太小显示不了耳朵 */
 }
 </style>

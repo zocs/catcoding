@@ -143,13 +143,13 @@ onMounted(() => {
 }
 
 .terminal {
-  background: #1a1b26;
+  background: var(--cc-bg-card);
   border-radius: 8px;
   padding: 16px;
   min-height: 400px;
   max-height: 500px;
   overflow-y: auto;
-  color: #a9b1d6;
+  color: var(--cc-fg);
   font-size: 13px;
   line-height: 1.5;
 }
@@ -160,10 +160,10 @@ onMounted(() => {
   word-break: break-all;
 }
 
-.line.cmd { color: #7aa2f7; }
-.line.output { color: #a9b1d6; }
-.line.error { color: #f7768e; }
-.line.cat { color: #9ece6a; }
+.line.cmd { color: var(--cc-blue); }
+.line.output { color: var(--cc-fg); }
+.line.error { color: var(--cc-error); }
+.line.cat { color: var(--cc-success); }
 
 .input-line {
   display: flex;
@@ -172,14 +172,14 @@ onMounted(() => {
 }
 
 .prompt {
-  color: #7aa2f7;
+  color: var(--cc-blue);
   margin-right: 8px;
 }
 
 .terminal-input {
   background: transparent;
   border: none;
-  color: #c0caf5;
+  color: var(--cc-fg);
   font-family: inherit;
   font-size: inherit;
   flex: 1;

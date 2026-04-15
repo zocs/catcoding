@@ -130,7 +130,7 @@ defineExpose({
 }
 
 .egg-message {
-  color: #888;
+  color: var(--cc-fg-muted);
   font-size: 14px;
 }
 

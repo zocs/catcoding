@@ -1,102 +1,38 @@
 /* ═══════════════════════════════════════════════════════════
-   CatCoding Dashboard — 全局样式
-   猫系暖色调 + 响应式设计系统
+   CatCoding Dashboard — Utility Classes
+   (Design tokens in theme.css, Naive overrides in App.vue)
    ═══════════════════════════════════════════════════════════ */
 
-/* ═══ CSS 变量（设计 Token） ═══ */
-:root {
-  /* 主色 */
-  --cat-primary: #f5a623;
-  --cat-primary-light: #ffb347;
-  --cat-primary-dark: #d48806;
-
-  /* 状态色 */
-  --cat-success: #67c23a;
-  --cat-warning: #e6a23c;
-  --cat-error: #f56c6c;
-  --cat-info: #409eff;
-  --cat-muted: #909399;
-
-  /* 背景色 */
-  --cat-bg: #faf8f5;
-  --cat-bg-card: #ffffff;
-  --cat-bg-kitchen: linear-gradient(135deg, #faf7f2 0%, #f5f0e8 100%);
-  --cat-bg-dark: #1a1a2e;
-
-  /* 文字 */
-  --cat-text: #2c3e50;
-  --cat-text-secondary: #7f8c8d;
-  --cat-text-inverse: #f0f0f0;
-
-  /* 边框 */
-  --cat-border: #e8e0d4;
-  --cat-border-radius: 12px;
-  --cat-border-radius-lg: 20px;
-
-  /* 阴影 */
-  --cat-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.06);
-  --cat-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.1);
-  --cat-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
-  --cat-shadow-glow: 0 0 20px rgba(245, 166, 35, 0.2);
-
-  /* 间距 */
-  --cat-gap-xs: 4px;
-  --cat-gap-sm: 8px;
-  --cat-gap-md: 16px;
-  --cat-gap-lg: 24px;
-  --cat-gap-xl: 32px;
-
-  /* 响应式断点（参考） */
-  /* --bp-xs:  0 ~ 480px   手机竖屏 */
-  /* --bp-sm:  481 ~ 768px 手机横屏 */
-  /* --bp-md:  769 ~ 1024px 平板 */
-  /* --bp-lg:  1025 ~ 1440px 笔记本 */
-  /* --bp-xl:  1441px+     大屏 */
-}
-
-/* ═══ 页面基础 ═══ */
-html {
-  font-size: 16px;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
-
-body {
-  color: var(--cat-text);
-  background: var(--cat-bg);
-  line-height: 1.6;
-}
-
-/* ═══ 页面容器（响应式最大宽度） ═══ */
+/* ═══ Page Container ═══ */
 .page-container {
   max-width: 1440px;
   margin: 0 auto;
-  padding: var(--cat-gap-lg);
+  padding: var(--cc-space-6);
 }
 
 @media (max-width: 480px) {
-  .page-container { padding: var(--cat-gap-sm); }
+  .page-container { padding: var(--cc-space-2); }
 }
 
 @media (min-width: 481px) and (max-width: 768px) {
-  .page-container { padding: var(--cat-gap-md); }
+  .page-container { padding: var(--cc-space-4); }
 }
 
-/* ═══ 卡片基础样式 ═══ */
-.cat-card {
-  background: var(--cat-bg-card);
-  border-radius: var(--cat-border-radius-lg);
-  border: 2px solid var(--cat-border);
-  box-shadow: var(--cat-shadow-sm);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+/* ═══ Card (custom, not Naive) ═══ */
+.cc-card {
+  background: var(--cc-bg-card);
+  border-radius: var(--cc-radius-card);
+  border: 1px solid var(--cc-border);
+  box-shadow: var(--cc-shadow-card);
+  transition: all var(--cc-duration) var(--cc-ease);
 }
 
-.cat-card:hover {
-  box-shadow: var(--cat-shadow-md);
-  border-color: var(--cat-primary);
+.cc-card:hover {
+  box-shadow: var(--cc-shadow-hover);
+  border-color: var(--cc-accent);
 }
 
-/* ═══ 响应式文字 ═══ */
+/* ═══ Responsive Text ═══ */
 .text-responsive {
   font-size: clamp(14px, 1.5vw, 16px);
 }
@@ -105,14 +41,14 @@ body {
   font-size: clamp(18px, 3vw, 24px);
 }
 
-/* ═══ 看板响应式 ═══ */
+/* ═══ Kanban Scroll ═══ */
 .kanban-scroll {
   display: flex;
-  gap: var(--cat-gap-md);
+  gap: var(--cc-space-4);
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
-  padding-bottom: var(--cat-gap-md);
+  padding-bottom: var(--cc-space-4);
 }
 
 .kanban-scroll > * {
@@ -120,7 +56,6 @@ body {
   flex-shrink: 0;
 }
 
-/* 移动端看板：每列占满宽度 */
 @media (max-width: 768px) {
   .kanban-scroll > * {
     width: calc(100vw - 32px);
@@ -128,7 +63,6 @@ body {
   }
 }
 
-/* 平板看板：两列 */
 @media (min-width: 769px) and (max-width: 1024px) {
   .kanban-scroll > * {
     width: calc(50% - 12px);
@@ -136,10 +70,10 @@ body {
   }
 }
 
-/* ═══ 网格响应式 ═══ */
+/* ═══ Grid Responsive ═══ */
 .grid-responsive {
   display: grid;
-  gap: var(--cat-gap-md);
+  gap: var(--cc-space-4);
 }
 
 .grid-responsive.cols-1 { grid-template-columns: 1fr; }
@@ -168,40 +102,40 @@ body {
   }
 }
 
-/* ═══ 动画工具类 ═══ */
-@keyframes fadeIn {
+/* ═══ Animations ═══ */
+@keyframes cc-fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-@keyframes slideInRight {
+@keyframes cc-slideIn {
   from { opacity: 0; transform: translateX(20px); }
   to   { opacity: 1; transform: translateX(0); }
 }
 
-@keyframes bounce {
+@keyframes cc-bounce {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-8px); }
 }
 
-@keyframes pulse {
+@keyframes cc-pulse {
   0%, 100% { opacity: 1; }
   50%      { opacity: 0.5; }
 }
 
 .animate-fade-in {
-  animation: fadeIn 0.4s ease-out;
+  animation: cc-fadeIn 0.4s var(--cc-ease);
 }
 
 .animate-slide-in {
-  animation: slideInRight 0.3s ease-out;
+  animation: cc-slideIn 0.3s var(--cc-ease);
 }
 
 .animate-bounce {
-  animation: bounce 0.6s ease-in-out;
+  animation: cc-bounce 0.6s var(--cc-ease);
 }
 
-/* ═══ 隐藏/显示工具类 ═══ */
+/* ═══ Responsive Visibility ═══ */
 .hide-mobile  { display: block; }
 .hide-desktop { display: none;  }
 
@@ -210,22 +144,20 @@ body {
   .hide-desktop { display: block !important; }
 }
 
-/* ═══ 触摸优化 ═══ */
+/* ═══ Touch Targets ═══ */
 @media (hover: none) and (pointer: coarse) {
-  /* 移动设备：增大点击区域 */
   button, a, [role="button"] {
     min-height: 44px;
     min-width: 44px;
   }
 
-  /* 移动设备：禁用 hover 效果 */
-  .cat-card:hover {
+  .cc-card:hover {
     transform: none;
-    box-shadow: var(--cat-shadow-sm);
+    box-shadow: var(--cc-shadow-card);
   }
 }
 
-/* ═══ 安全区适配（iPhone 刘海） ═══ */
+/* ═══ Safe Area (iPhone notch) ═══ */
 @supports (padding: max(0px)) {
   .mobile-content {
     padding-left: max(12px, env(safe-area-inset-left));

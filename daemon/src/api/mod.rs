@@ -97,7 +97,7 @@ async fn root_handler(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
     Json(json!({
         "name": "CatCoding Daemon",
         "version": env!("CARGO_PKG_VERSION"),
-        "motto": "🐱 让 AI 像猫咪团队一样协作做菜！",
+        "motto": "Let AI collaborate like a cat team!",
         "project": state.project_id,
         "agents": agent_count,
         "tasks": task_count,
@@ -150,7 +150,7 @@ async fn get_project(State(state): State<Arc<ApiState>>, Path(id): Path<String>)
         .into_response(),
         None => (
             StatusCode::NOT_FOUND,
-            Json(json!({ "error": "项目不存在" })),
+            Json(json!({ "error": "Project not found" })),
         )
             .into_response(),
     }
@@ -181,7 +181,7 @@ async fn get_task(State(state): State<Arc<ApiState>>, Path(id): Path<String>) ->
         Some(task) => Json(json!(task)).into_response(),
         None => (
             StatusCode::NOT_FOUND,
-            Json(json!({ "error": "任务不存在" })),
+            Json(json!({ "error": "Task not found" })),
         )
             .into_response(),
     }
@@ -209,7 +209,7 @@ async fn create_task(
     // 加入调度队列
     let _ = state.scheduler.enqueue(task).await;
 
-    tracing::info!("📋 创建任务: {} ({})", title, task_id);
+    tracing::info!("Task created: {} ({})", title, task_id);
 
     (
         StatusCode::CREATED,
@@ -217,7 +217,7 @@ async fn create_task(
             "id": task_id,
             "title": title,
             "status": "pending",
-            "message": "任务已创建，等待调度..."
+            "message": "Task created, waiting for scheduling..."
         })),
     )
 }
@@ -245,7 +245,7 @@ async fn update_task_status(
         _ => {
             return (
                 StatusCode::BAD_REQUEST,
-                Json(json!({ "error": "无效的状态" })),
+                Json(json!({ "error": "Invalid status" })),
             )
                 .into_response()
         }
@@ -257,11 +257,11 @@ async fn update_task_status(
         .await
     {
         Ok(_) => {
-            tracing::info!("📋 任务 {} 状态更新为 {:?}", id, new_status);
+            tracing::info!("Task {} status updated to {:?}", id, new_status);
             Json(json!({
                 "id": id,
                 "status": status_str,
-                "message": "状态已更新"
+                "message": "Status updated"
             }))
             .into_response()
         }
@@ -278,11 +278,11 @@ async fn execute_command(
     State(_state): State<Arc<ApiState>>,
     Json(req): Json<CommandRequest>,
 ) -> impl IntoResponse {
-    tracing::info!("📨 收到命令: {} {:?}", req.command, req.args);
+    tracing::info!("Received command: {} {:?}", req.command, req.args);
     Json(json!({
         "result": "ok",
         "command": req.command,
-        "message": "命令已接收，正在处理..."
+        "message": "Command received, processing..."
     }))
 }
 
@@ -337,7 +337,7 @@ async fn ws_connection(socket: axum::extract::ws::WebSocket, state: Arc<ApiState
     // 发送欢迎消息
     let welcome = json!({
         "type": "connected",
-        "message": "🐱 CatCoding WebSocket 已连接",
+        "message": "CatCoding WebSocket connected",
         "timestamp": chrono::Utc::now().to_rfc3339(),
     });
     let _ = sender
@@ -363,5 +363,5 @@ async fn ws_connection(socket: axum::extract::ws::WebSocket, state: Arc<ApiState
     }
 
     send_task.abort();
-    tracing::info!("📡 WebSocket 客户端断开");
+    tracing::info!("WebSocket client disconnected");
 }

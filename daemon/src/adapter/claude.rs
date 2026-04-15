@@ -63,7 +63,7 @@ impl ClaudeCodeAdapter {
 
         // 最后添加 prompt
         let prompt = format!(
-            "项目: {}\n角色: {}\n任务: {}\n工作目录: {}",
+            "Project: {}\nRole: {}\nTask: {}\nWorkdir: {}",
             context.project_id, context.role, context.task_description, context.working_dir
         );
         args.push(prompt);
@@ -80,13 +80,13 @@ impl AgentAdapter for ClaudeCodeAdapter {
 
     async fn spawn(&self, context: AgentContext) -> Result<AgentHandle> {
         tracing::info!(
-            "🎭 启动 Claude Code Agent: role={}, project={}",
+            "Starting Claude Code Agent: role={}, project={}",
             context.role,
             context.project_id
         );
 
         let args = self.build_args(&context);
-        tracing::debug!("claude 命令: {} {:?}", self.config.binary_path, args);
+        tracing::debug!("claude command: {} {:?}", self.config.binary_path, args);
 
         let mut cmd = Command::new(&self.config.binary_path);
         cmd.args(&args)
@@ -105,7 +105,7 @@ impl AgentAdapter for ClaudeCodeAdapter {
         let child = cmd.spawn()?;
 
         let pid = child.id();
-        tracing::info!("✅ Claude Code Agent 已启动, PID: {:?}", pid);
+        tracing::info!("Claude Code Agent started, PID: {:?}", pid);
 
         // 将子进程存储以便后续管理
         // 注意：这里需要一个全局的进程管理器，暂时简化处理
@@ -119,7 +119,7 @@ impl AgentAdapter for ClaudeCodeAdapter {
     }
 
     async fn send_task(&self, handle: &AgentHandle, task_description: &str) -> Result<()> {
-        tracing::info!("📝 向 Claude Code Agent {} 发送任务", handle.agent_id);
+        tracing::info!("Sending task to Claude Code Agent {}", handle.agent_id);
         // Claude Code 使用一次性执行模式，任务在 spawn 时已传入
         // 这里可以实现重试或更新任务的逻辑
         Ok(())
@@ -131,13 +131,13 @@ impl AgentAdapter for ClaudeCodeAdapter {
         Ok(Some(AgentOutput {
             agent_id: handle.agent_id.clone(),
             output_type: "info".to_string(),
-            content: "Claude Code 执行中...".to_string(),
+            content: "Claude Code executing...".to_string(),
             timestamp: chrono::Utc::now().to_rfc3339(),
         }))
     }
 
     async fn stop(&self, handle: &AgentHandle) -> Result<()> {
-        tracing::info!("🛑 停止 Claude Code Agent {}", handle.agent_id);
+        tracing::info!("Stopping Claude Code Agent {}", handle.agent_id);
         if let Some(pid) = handle.pid {
             unsafe {
                 libc::kill(pid as i32, libc::SIGTERM);
@@ -154,12 +154,12 @@ impl AgentAdapter for ClaudeCodeAdapter {
                 Ok(HealthStatus::Healthy)
             } else {
                 Ok(HealthStatus::Unhealthy {
-                    reason: "进程不存在".to_string(),
+                    reason: "Process not found".to_string(),
                 })
             }
         } else {
             Ok(HealthStatus::Degraded {
-                reason: "无 PID 信息".to_string(),
+                reason: "No PID info".to_string(),
             })
         }
     }

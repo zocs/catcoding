@@ -18,6 +18,8 @@ export default defineConfig({
   },
   server: {
     port: 5173,
+    // Don't show absolute file paths in error overlay
+    hmr: { overlay: false },
     proxy: {
       '/api': 'http://127.0.0.1:19800',
       '/ws': {
@@ -31,7 +33,6 @@ export default defineConfig({
       output: {
         manualChunks: {
           'vue-vendor': ['vue', 'vue-router', 'pinia'],
-          'echarts': ['echarts'],
         },
       },
     },

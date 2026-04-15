@@ -64,7 +64,7 @@ impl Database {
             CREATE INDEX IF NOT EXISTS idx_history_task ON task_history(task_id);
         ",
         )?;
-        tracing::info!("💾 SQLite Schema 初始化完成: {}", self.db_path);
+        tracing::info!("SQLite schema initialized: {}", self.db_path);
         Ok(())
     }
 
@@ -91,7 +91,7 @@ impl Database {
         // 记录历史
         conn.execute(
             "INSERT INTO task_history (task_id, old_status, new_status, changed_at, details)
-             VALUES (?1, NULL, ?2, ?3, '任务创建')",
+             VALUES (?1, NULL, ?2, ?3, 'task_created')",
             params![task.id, task.status.as_str(), Utc::now().to_rfc3339()],
         )?;
 
@@ -125,7 +125,7 @@ impl Database {
         // 记录历史
         conn.execute(
             "INSERT INTO task_history (task_id, old_status, new_status, changed_at, details)
-             VALUES (?1, ?2, ?3, ?4, '状态更新')",
+             VALUES (?1, ?2, ?3, ?4, 'status_update')",
             params![task_id, old_status, status, Utc::now().to_rfc3339()],
         )?;
 

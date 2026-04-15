@@ -124,7 +124,7 @@ impl Watchdog {
             last_diagnose: None,
         };
         self.agents.write().await.insert(agent_id.clone(), monitor);
-        tracing::info!("🦉 Watchdog 已注册监控 Agent: {}", agent_id);
+        tracing::info!("Watchdog monitoring Agent: {}", agent_id);
         Ok(())
     }
 
@@ -201,7 +201,7 @@ impl Watchdog {
         let agents = self.agents.read().await;
         let monitor = match agents.get(agent_id) {
             Some(m) => m,
-            None => return (RecoveryAction::Diagnose, "Agent 不存在".to_string()),
+            None => return (RecoveryAction::Diagnose, "Agent not found".to_string()),
         };
 
         // 检查重启次数
@@ -209,7 +209,7 @@ impl Watchdog {
             return (
                 RecoveryAction::Escalate,
                 format!(
-                    "Agent {} 已重启 {} 次，达到上限",
+                    "Agent {} restarted {} times, limit reached",
                     agent_id, monitor.restart_count
                 ),
             );
@@ -220,14 +220,14 @@ impl Watchdog {
             let proc_info = Self::check_proc(pid);
 
             if !proc_info.alive {
-                return (RecoveryAction::Restart, format!("进程 {} 已退出", pid));
+                return (RecoveryAction::Restart, format!("Process {} exited", pid));
             }
 
             if proc_info.memory_kb as u64 > self.config.max_memory_mb * 1024 {
                 return (
                     RecoveryAction::Restart,
                     format!(
-                        "内存超限: {}KB > {}MB",
+                        "Memory exceeded: {}KB > {}MB",
                         proc_info.memory_kb, self.config.max_memory_mb
                     ),
                 );
@@ -236,7 +236,7 @@ impl Watchdog {
             if proc_info.cpu_percent > self.config.max_cpu_percent as f64 {
                 return (
                     RecoveryAction::Diagnose,
-                    format!("CPU 使用率高: {:.1}%", proc_info.cpu_percent),
+                    format!("High CPU usage: {:.1}%", proc_info.cpu_percent),
                 );
             }
 
@@ -246,15 +246,15 @@ impl Watchdog {
                 return (
                     RecoveryAction::Restart,
                     format!(
-                        "心跳超时: {}s > {}s",
+                        "Heartbeat timeout: {}s > {}s",
                         elapsed, self.config.heartbeat_timeout
                     ),
                 );
             }
 
-            (RecoveryAction::Resume, "进程正常，恢复上下文".to_string())
+            (RecoveryAction::Resume, "Process healthy, resuming context".to_string())
         } else {
-            (RecoveryAction::Restart, "无 PID 信息".to_string())
+            (RecoveryAction::Restart, "No PID info".to_string())
         }
     }
 
@@ -269,26 +269,26 @@ impl Watchdog {
 
         match action {
             RecoveryAction::GracePeriod => {
-                tracing::info!("🦉 Agent {} 进入 GRACE_PERIOD，等待 5s", agent_id);
+                tracing::info!("Agent {} entering GRACE_PERIOD, waiting 5s", agent_id);
                 tokio::time::sleep(std::time::Duration::from_secs(5)).await;
-                Ok("等待完成".to_string())
+                Ok("Wait complete".to_string())
             }
             RecoveryAction::Diagnose => {
-                tracing::info!("🦉 Agent {} 正在诊断...", agent_id);
+                tracing::info!("Agent {} diagnosing...", agent_id);
                 if let Some(m) = monitor {
                     m.last_diagnose = Some(Utc::now());
                 }
-                Ok("诊断完成".to_string())
+                Ok("Diagnosis complete".to_string())
             }
             RecoveryAction::Resume => {
-                tracing::info!("🦉 Agent {} 恢复运行", agent_id);
+                tracing::info!("Agent {} resumed", agent_id);
                 if let Some(m) = monitor {
                     m.last_heartbeat = Utc::now();
                 }
-                Ok("已恢复".to_string())
+                Ok("Resumed".to_string())
             }
             RecoveryAction::Restart => {
-                tracing::warn!("🦉 Agent {} 执行重启", agent_id);
+                tracing::warn!("Agent {} restarting", agent_id);
                 let restart_count = monitor.as_ref().map(|m| m.restart_count + 1).unwrap_or(1);
                 if let Some(m) = monitor {
                     // 杀死旧进程
@@ -296,17 +296,17 @@ impl Watchdog {
                         unsafe {
                             libc::kill(pid as i32, libc::SIGTERM);
                         }
-                        tracing::info!("🦉 已发送 SIGTERM 给进程 {}", pid);
+                        tracing::info!("Sent SIGTERM to process {}", pid);
                     }
                     m.restart_count = restart_count;
                     m.last_heartbeat = Utc::now();
                     m.pid = None;
                 }
-                Ok(format!("已重启 (第{}次)", restart_count))
+                Ok(format!("Restarted (attempt {})", restart_count))
             }
             RecoveryAction::Escalate => {
-                tracing::error!("🦉 Agent {} 需要 ESCALATE，通知用户", agent_id);
-                Ok("已通知用户".to_string())
+                tracing::error!("Agent {} needs ESCALATE, notifying user", agent_id);
+                Ok("User notified".to_string())
             }
         }
     }
@@ -325,26 +325,26 @@ impl Watchdog {
                     results.push((
                         agent_id.clone(),
                         RecoveryAction::Escalate,
-                        format!("重启次数已达上限 ({})", monitor.restart_count),
+                        format!("Restart limit reached ({})", monitor.restart_count),
                     ));
                 } else {
                     results.push((
                         agent_id.clone(),
                         RecoveryAction::Restart,
-                        format!("心跳超时 {}s > {}s", elapsed, self.config.heartbeat_timeout),
+                        format!("Heartbeat timeout {}s > {}s", elapsed, self.config.heartbeat_timeout),
                     ));
                 }
             } else if elapsed > self.config.heartbeat_timeout / 2 {
                 results.push((
                     agent_id.clone(),
                     RecoveryAction::Diagnose,
-                    format!("心跳延迟 {}s", elapsed),
+                    format!("Heartbeat delayed {}s", elapsed),
                 ));
             } else if elapsed > self.config.heartbeat_interval * 3 {
                 results.push((
                     agent_id.clone(),
                     RecoveryAction::GracePeriod,
-                    format!("心跳轻微延迟 {}s", elapsed),
+                    format!("Heartbeat slightly delayed {}s", elapsed),
                 ));
             }
         }
@@ -389,7 +389,7 @@ impl Watchdog {
     /// 启动监控循环
     pub async fn start_monitoring(self: Arc<Self>) {
         tracing::info!(
-            "🦉 Watchdog 监控循环启动，间隔 {}s",
+            "Watchdog monitoring loop started, interval {}s",
             self.config.heartbeat_interval
         );
         let mut interval = tokio::time::interval(std::time::Duration::from_secs(
@@ -406,10 +406,10 @@ impl Watchdog {
                 // 执行恢复策略
                 match self.execute_recovery(&agent_id, &action).await {
                     Ok(result) => {
-                        tracing::info!("🦉 恢复结果: {}", result);
+                        tracing::info!("Recovery result: {}", result);
                     }
                     Err(e) => {
-                        tracing::error!("🦉 恢复失败: {}", e);
+                        tracing::error!("Recovery failed: {}", e);
                     }
                 }
             }

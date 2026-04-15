@@ -273,7 +273,7 @@ onMounted(() => {
 
 .progress-card {
   border-radius: 12px;
-  border: 2px solid #f5a623;
+  border: 2px solid var(--cc-orange);
   animation: progressPulse 2s ease-in-out infinite;
 }
 
@@ -293,14 +293,14 @@ onMounted(() => {
 }
 
 .terminal-card {
-  background: #1a1a2e;
+  background: var(--cc-bg-card);
   border-radius: 16px;
-  border: 2px solid #2d2d44;
+  border: 2px solid var(--cc-bg-input);
 }
 
 .terminal-log {
   height: 400px;
-  color: #d4d4d4;
+  color: var(--cc-fg);
   font-family: 'Fira Code', 'JetBrains Mono', monospace;
 }
 
@@ -309,14 +309,14 @@ onMounted(() => {
 }
 
 .prompt {
-  color: #f5a623;
+  color: var(--cc-orange);
   font-weight: bold;
   margin-right: 8px;
   transition: color 0.3s;
 }
 
 .prompt.cat-active {
-  color: #9c27b0;
+  color: var(--cc-purple);
   animation: catBreathe 1s ease-in-out infinite;
 }
 

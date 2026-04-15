@@ -127,9 +127,9 @@ function catchBug(bug: Bug) {
   font-size: 14px;
 }
 
-.stat.alive  { background: #fff3e0; }
-.stat.caught { background: #e8f5e9; }
-.stat.escaped { background: #fce4ec; }
+.stat.alive  { background: var(--cc-bg-card); }
+.stat.caught { background: var(--cc-bg-card); }
+.stat.escaped { background: var(--cc-bg-card); }
 
 .stat .count {
   font-weight: bold;
@@ -306,7 +306,7 @@ function catchBug(bug: Bug) {
 .caught-section {
   margin-top: 16px;
   padding: 12px;
-  background: #f0fff0;
+  background: var(--cc-bg-card);
   border-radius: 12px;
 }
 

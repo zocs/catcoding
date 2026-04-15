@@ -1,95 +1,174 @@
-/* ━━━ CatCoding Theme System ━━━ */
-/* Uses CSS custom properties for light/dark theme switching */
+/* ━━━ CatCoding Dashboard — Design Token System ━━━ */
+/* Source: ui-ux-design-system (Developer Tool palette) */
+/* Fonts: Fira Sans (body) + Fira Code (code) */
 
 :root {
-  /* Page backgrounds */
-  --bg-page: #faf8f5;
-  --bg-card: #ffffff;
-  --bg-sider: #fef9f0;
-  --bg-input: #ffffff;
+  /* ═══ Color Palette — Dark (default) ═══ */
+  --cc-bg:          #0F172A;
+  --cc-bg-sider:    #1E293B;
+  --cc-bg-card:     #1B2336;
+  --cc-bg-input:    #272F42;
+  --cc-bg-hover:    #334155;
 
-  /* Text */
-  --text-primary: #3a3a2e;
-  --text-secondary: #6b6b5e;
-  --text-muted: #999;
-  --text-on-card: #2a2a2a;
+  --cc-fg:          #F8FAFC;
+  --cc-fg-secondary:#94A3B8;
+  --cc-fg-muted:    #64748B;
 
-  /* Borders */
-  --border-color: #e8e0d4;
-  --border-sider: #f0e6d6;
+  --cc-border:      #334155;
+  --cc-border-subtle:#1E293B;
 
-  /* Accents */
-  --accent-orange: #f5a623;
-  --accent-green: #4caf50;
-  --accent-blue: #2196f3;
-  --accent-red: #e74c3c;
-  --accent-purple: #9c27b0;
+  --cc-accent:      #22C55E;
+  --cc-accent-hover:#16A34A;
+  --cc-orange:      #F97316;
+  --cc-blue:        #3B82F6;
+  --cc-purple:      #A855F7;
+  --cc-red:         #EF4444;
+  --cc-yellow:      #F59E0B;
 
-  /* Cards */
-  --card-shadow: 0 2px 12px rgba(0,0,0,0.06);
-  --card-hover-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  /* ═══ Status Colors ═══ */
+  --cc-success:     #22C55E;
+  --cc-warning:     #F59E0B;
+  --cc-error:       #EF4444;
+  --cc-info:        #3B82F6;
 
-  /* Agent status */
-  --status-working: #4caf50;
-  --status-idle: #9e9e9e;
-  --status-error: #f44336;
+  /* ═══ Typography ═══ */
+  --cc-font-body:   'Fira Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --cc-font-mono:   'Fira Code', 'JetBrains Mono', monospace;
+
+  /* ═══ Spacing (8px base) ═══ */
+  --cc-space-1: 4px;
+  --cc-space-2: 8px;
+  --cc-space-3: 12px;
+  --cc-space-4: 16px;
+  --cc-space-5: 20px;
+  --cc-space-6: 24px;
+  --cc-space-8: 32px;
+  --cc-space-10: 40px;
+  --cc-space-12: 48px;
+
+  /* ═══ Border Radius (递减层次) ═══ */
+  --cc-radius-lg:   20px;
+  --cc-radius-card: 16px;
+  --cc-radius-btn:  12px;
+  --cc-radius-sm:   8px;
+  --cc-radius-pill: 999px;
+
+  /* ═══ Shadows (dual-layer clay) ═══ */
+  --cc-shadow-card: 0 2px 0 0 rgba(0,0,0,0.2), 0 8px 24px -8px rgba(0,0,0,0.3);
+  --cc-shadow-hover:0 4px 0 0 rgba(0,0,0,0.15), 0 16px 40px -8px rgba(0,0,0,0.4);
+  --cc-shadow-glow-green: 0 0 20px rgba(34,197,94,0.15);
+  --cc-shadow-glow-orange: 0 0 20px rgba(249,115,22,0.15);
+
+  /* ═══ Animation ═══ */
+  --cc-ease:        cubic-bezier(0.16, 1, 0.3, 1);
+  --cc-duration:    200ms;
+
+  /* ═══ Z-Index Scale ═══ */
+  --cc-z-dropdown:  10;
+  --cc-z-sticky:    20;
+  --cc-z-overlay:   30;
+  --cc-z-modal:     40;
+  --cc-z-toast:     50;
 }
 
-[data-theme="dark"] {
-  --bg-page: #181825;
-  --bg-card: #1e1e2e;
-  --bg-sider: #1e1e2e;
-  --bg-input: #313244;
+/* ═══ Light Theme ═══ */
+[data-theme="light"] {
+  --cc-bg:          #FAFBFC;
+  --cc-bg-sider:    #F1F5F9;
+  --cc-bg-card:     #FFFFFF;
+  --cc-bg-input:    #F1F5F9;
+  --cc-bg-hover:    #E2E8F0;
 
-  --text-primary: #cdd6f4;
-  --text-secondary: #a6adc8;
-  --text-muted: #6c7086;
-  --text-on-card: #cdd6f4;
+  --cc-fg:          #0F172A;
+  --cc-fg-secondary:#475569;
+  --cc-fg-muted:    #94A3B8;
 
-  --border-color: #313244;
-  --border-sider: #313244;
+  --cc-border:      #E2E8F0;
+  --cc-border-subtle:#F1F5F9;
 
-  --accent-orange: #fab387;
-  --accent-green: #a6e3a1;
-  --accent-blue: #89b4fa;
-  --accent-red: #f38ba8;
-  --accent-purple: #cba6f7;
+  --cc-accent:      #16A34A;
+  --cc-accent-hover:#15803D;
+  --cc-orange:      #EA580C;
+  --cc-blue:        #2563EB;
+  --cc-purple:      #9333EA;
+  --cc-red:         #DC2626;
+  --cc-yellow:      #D97706;
 
-  --card-shadow: 0 2px 12px rgba(0,0,0,0.3);
-  --card-hover-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  --cc-success:     #16A34A;
+  --cc-warning:     #D97706;
+  --cc-error:       #DC2626;
+  --cc-info:        #2563EB;
 
-  --status-working: #a6e3a1;
-  --status-idle: #6c7086;
-  --status-error: #f38ba8;
+  --cc-shadow-card: 0 1px 3px rgba(0,0,0,0.06), 0 4px 12px rgba(0,0,0,0.04);
+  --cc-shadow-hover:0 4px 12px rgba(0,0,0,0.08), 0 12px 28px rgba(0,0,0,0.06);
+  --cc-shadow-glow-green: 0 0 20px rgba(22,163,74,0.08);
+  --cc-shadow-glow-orange: 0 0 20px rgba(234,88,12,0.08);
 }
 
-/* ━━━ Global resets ━━━ */
-
+/* ═══ Global Base ═══ */
 html, body {
-  background: var(--bg-page);
-  color: var(--text-primary);
-  transition: background 0.3s, color 0.3s;
+  font-family: var(--cc-font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  background: var(--cc-bg);
+  color: var(--cc-fg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background var(--cc-duration) var(--cc-ease),
+              color var(--cc-duration) var(--cc-ease);
 }
 
-/* ━━━ Card overrides ━━━ */
-
-.agent-card,
-.gantt-card,
-.kanban-card,
-.board-card {
-  background: var(--bg-card) !important;
-  border: 1px solid var(--border-color) !important;
-  box-shadow: var(--card-shadow) !important;
-  transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+/* ═══ Reduced Motion ═══ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-.agent-card:hover,
-.kanban-card:hover {
-  box-shadow: var(--card-hover-shadow) !important;
+/* ═══ Naive UI Overrides (theme-aware) ═══ */
+
+/* Card */
+.n-card {
+  background: var(--cc-bg-card) !important;
+  border-color: var(--cc-border) !important;
+  border-radius: var(--cc-radius-card) !important;
 }
 
-/* Naive UI card overrides in dark mode */
-[data-theme="dark"] .n-card {
-  background: var(--bg-card) !important;
-  border-color: var(--border-color) !important;
+/* Input */
+.n-input .n-input__input-el,
+.n-input .n-input__textarea-el {
+  background: var(--cc-bg-input) !important;
+  color: var(--cc-fg) !important;
+}
+
+/* Menu active/hover */
+.n-menu .n-menu-item-content:hover {
+  background: var(--cc-bg-hover) !important;
+}
+
+/* Tag colors */
+.n-tag--primary-type {
+  --n-color: var(--cc-accent) !important;
+}
+
+/* Button cursor */
+.n-button {
+  cursor: pointer !important;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--cc-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--cc-border);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--cc-fg-muted);
 }

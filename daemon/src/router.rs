@@ -110,7 +110,7 @@ impl MessageRouter {
     pub async fn publish(&self, subject: &str, message: &AgentMessage) -> Result<()> {
         let payload = serde_json::to_vec(message)?;
         tracing::debug!(
-            "📡 路由消息 [{}] → {} ({} bytes)",
+            "Routing message [{}] → {} ({} bytes)",
             subject,
             message.to,
             payload.len()
@@ -123,7 +123,7 @@ impl MessageRouter {
 
     /// 订阅 subject
     pub async fn subscribe(&self, subject: &str) -> Result<()> {
-        tracing::info!("📡 订阅频道: {}", subject);
+        tracing::info!("Subscribing to: {}", subject);
         // TODO: 实际通过 NATS 订阅
         Ok(())
     }

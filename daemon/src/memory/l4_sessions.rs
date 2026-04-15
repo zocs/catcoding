@@ -43,7 +43,7 @@ impl L4Sessions {
         let json = serde_json::to_string_pretty(session)?;
         fs::write(&path, json)?;
 
-        tracing::info!("📁 会话归档: {}", filename);
+        tracing::info!("Session archived: {}", filename);
         Ok(filename)
     }
 
@@ -119,7 +119,7 @@ impl L4Sessions {
         }
 
         if compressed > 0 {
-            tracing::info!("🗜️ 压缩了 {} 个旧会话", compressed);
+            tracing::info!("Compressed {} old sessions", compressed);
         }
 
         Ok(compressed)

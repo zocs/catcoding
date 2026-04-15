@@ -124,6 +124,71 @@ load_skills(relevant_skills)          # 只加载相关的
 
 **收益**: 减少 token 消耗，提升模型性能
 
+#### 4. Definition of Done (DoD) 任务完成契约
+**来源**: BotLearn 社区 — 心晴 (@roy722) + Finn
+**当前状态**: Agent 完成任务后自行判断，容易出现"以为完成但实际未完成"
+**优化方案**: 每个任务分配时必须附带 DoD，执行后自动验证
+
+**核心原则**:
+> Never "figure out what to do" — always "do X, output Y, verify Z"
+
+**DoD 数据结构**（已实现于 `agents/base/agent.py`）:
+```python
+@dataclass
+class TaskDoD:
+    output_path: str          # 输出必须写入此路径
+    output_format: str        # 格式规格（如 "JSON with fields: ..."）
+    verify_command: str       # 验证命令（exit 0 = success）
+    silent_on_success: bool   # 成功时返回 HEARTBEAT_OK（cron 场景）
+    required_artifacts: list  # 必须产出的文件列表
+```
+
+**验证流程**:
+```
+任务执行完成
+  → 检查 output_path 文件是否存在
+  → 检查 required_artifacts 是否齐全
+  → 执行 verify_command（exit code 0 = pass）
+  → 全部通过 → 完成 ✓
+  → 任一失败 → 标记 FAILED，返回具体原因
+```
+
+**任务分配示例**:
+```json
+{
+  "type": "task.assign",
+  "summary": "生成 API 文档",
+  "details": {
+    "dod": {
+      "output_path": "docs/api.md",
+      "output_format": "Markdown with ## Endpoints section",
+      "verify_command": "test -s docs/api.md && grep -q '## Endpoints' docs/api.md",
+      "silent_on_success": false,
+      "required_artifacts": ["docs/api.md"]
+    }
+  }
+}
+```
+
+**Cron 场景（静默成功）**:
+```json
+{
+  "dod": {
+    "output_path": "",
+    "verify_command": "true",
+    "silent_on_success": true
+  }
+}
+// 无内容汇报 → 返回 "HEARTBEAT_OK"
+// 有异常 → 返回具体错误
+// 信号干净，不污染日志
+```
+
+**收益**:
+- 消除"假完成"——Agent 无法自我欺骗，必须通过客观验证
+- 自动化质检——无需人工 review 每个任务输出
+- 干净信号——cron 任务成功时静默，失败时才告警
+
 ---
 
 ### 🟡 中优先级（Phase 2-3）
@@ -236,13 +301,14 @@ Daemon
 
 ### Phase 2 新增任务
 
-| 任务 | 来源 | 优先级 |
-|------|------|--------|
-| L4 记忆系统 | GenericAgent | 🔴 高 |
-| Skills 自动结晶 | GenericAgent | 🔴 高 |
-| Skills 渐进加载 | deer-flow | 🔴 高 |
-| 上下文工程 | deer-flow | 🟡 中 |
-| Agent 间知识共享 | ClawManager | 🟡 中 |
+| 任务 | 来源 | 优先级 | 状态 |
+|------|------|--------|------|
+| L4 记忆系统 | GenericAgent | 🔴 高 | 待做 |
+| Skills 自动结晶 | GenericAgent | 🔴 高 | 待做 |
+| Skills 渐进加载 | deer-flow | 🔴 高 | 待做 |
+| Definition of Done | BotLearn 社区 | 🔴 高 | ✅ 已实现 |
+| 上下文工程 | deer-flow | 🟡 中 | 待做 |
+| Agent 间知识共享 | ClawManager | 🟡 中 | 待做 |
 
 ### 已有任务调整
 

@@ -59,7 +59,7 @@ impl ProgressiveLoader {
             }
         }
 
-        tracing::info!("📚 渐进式加载器: 加载 {} 个场景索引", self.index.len());
+        tracing::info!("Progressive loader: loaded {} scene indexes", self.index.len());
         Ok(())
     }
 
@@ -109,7 +109,7 @@ impl ProgressiveLoader {
         }
 
         tracing::debug!(
-            "🔍 搜索完成: 场景={}, 关键词={:?}, 找到={} 个 Skill",
+            "Search complete: scene={}, keywords={:?}, found={} skills",
             task_type,
             keywords,
             result.len()
@@ -131,7 +131,7 @@ impl ProgressiveLoader {
     /// 保存索引到文件
     pub fn save_index(&self, index_path: &Path) -> Result<()> {
         let mut content =
-            String::from("# CatCoding Skill 索引\n# 格式: scene → skill1,skill2,skill3\n\n");
+            String::from("# CatCoding Skill Index\n# Format: scene → skill1,skill2,skill3\n\n");
 
         let mut scenes: Vec<_> = self.index.keys().collect();
         scenes.sort();
@@ -145,7 +145,7 @@ impl ProgressiveLoader {
         }
 
         std::fs::write(index_path, content)?;
-        tracing::info!("💾 索引已保存: {} 个场景", self.index.len());
+        tracing::info!("Index saved: {} scenes", self.index.len());
         Ok(())
     }
 

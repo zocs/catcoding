@@ -101,7 +101,7 @@ impl MemoryManager {
         // 更新 L1 索引（低频→第二层关键词，高频→第一层 key→value）
         self.l1.add_keyword(key);
 
-        tracing::info!("💾 写入记忆 L2: {} (来源: {})", key, source_task);
+        tracing::info!("Writing memory L2: {} (source: {})", key, source_task);
         Ok(())
     }
 
@@ -124,7 +124,7 @@ impl MemoryManager {
         self.l1
             .add_mapping(&skill.trigger_scene, &format!("L3:{}", skill_name));
 
-        tracing::info!("✨ Skill 结晶完成: {} (来源任务: {})", skill_name, task_id);
+        tracing::info!("Skill crystallized: {} (source task: {})", skill_name, task_id);
         Ok(skill_name)
     }
 

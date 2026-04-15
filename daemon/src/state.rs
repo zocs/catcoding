@@ -197,7 +197,7 @@ impl StateManager {
         // 写入 SQLite
         if let Some(db) = &self.db {
             db.insert_task(project_id, &task).await?;
-            tracing::debug!("💾 任务 {} 已持久化到 SQLite", task.id);
+            tracing::debug!("Task {} persisted to SQLite", task.id);
         }
 
         Ok(())
@@ -278,7 +278,7 @@ impl StateManager {
                     project.agents.insert(agent.id.clone(), agent);
                 }
                 tracing::info!(
-                    "💾 从 SQLite 加载了 {} 个任务和 {} 个 Agent",
+                    "Loaded {} tasks and {} agents from SQLite",
                     project.tasks.len(),
                     project.agents.len()
                 );

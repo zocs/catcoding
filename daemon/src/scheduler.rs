@@ -56,7 +56,7 @@ impl Scheduler {
 
     /// 添加任务到调度队列
     pub async fn enqueue(&self, task: Task) -> Result<()> {
-        tracing::info!("📋 任务入队: {} ({})", task.title, task.id);
+        tracing::info!("Task enqueued: {} ({})", task.title, task.id);
         self.pending_queue.write().await.push(task);
         Ok(())
     }
@@ -72,7 +72,7 @@ impl Scheduler {
             .write()
             .await
             .insert(agent_id.clone(), slot);
-        tracing::info!("🐱 Agent {} 已注册到调度器", agent_id);
+        tracing::info!("Agent {} registered to scheduler", agent_id);
         Ok(())
     }
 
@@ -125,7 +125,7 @@ impl Scheduler {
             }
 
             if !Self::check_dependencies(&task, &completed) {
-                tracing::debug!("⏳ 任务 {} 依赖未满足，放回队列", task.id);
+                tracing::debug!("Task {} dependencies not met, re-queued", task.id);
                 remaining.push(task);
                 continue;
             }
@@ -139,7 +139,7 @@ impl Scheduler {
             match available {
                 Some(agent) => {
                     tracing::info!(
-                        "🐱 分配任务 [{}] → Agent {} ({})",
+                        "Assigning task [{}] → Agent {} ({})",
                         task.title,
                         agent.agent_id,
                         agent.role
@@ -163,7 +163,7 @@ impl Scheduler {
         state_manager: Arc<crate::state::StateManager>,
         project_id: String,
     ) {
-        tracing::info!("📋 调度器启动，检查间隔 {}s", self.config.check_interval);
+        tracing::info!("Scheduler started, check interval {}s", self.config.check_interval);
         let mut interval =
             tokio::time::interval(std::time::Duration::from_secs(self.config.check_interval));
 
@@ -172,13 +172,13 @@ impl Scheduler {
             match self.schedule_once(&state_manager, &project_id).await {
                 Ok(assignments) => {
                     for (agent_id, task) in assignments {
-                        tracing::info!("🚀 分发任务 [{}] → {}", task.title, agent_id);
+                        tracing::info!("Dispatching task [{}] → {}", task.title, agent_id);
 
                         // 通过生命周期管理器实际发送任务给 Agent
                         let lm = self.lifecycle_manager.lock().await;
                         match lm.send_task(&agent_id, &task.description).await {
                             Ok(()) => {
-                                tracing::info!("✅ 任务已发送给 Agent {}", agent_id);
+                                tracing::info!("Task sent to Agent {}", agent_id);
                                 // 更新任务状态为 active
                                 let _ = state_manager
                                     .update_task_status(
@@ -189,14 +189,14 @@ impl Scheduler {
                                     .await;
                             }
                             Err(e) => {
-                                tracing::error!("❌ 发送任务失败: {}，放回队列", e);
+                                tracing::error!("Task dispatch failed: {}, re-queued", e);
                                 self.pending_queue.write().await.push(task);
                             }
                         }
                     }
                 }
                 Err(e) => {
-                    tracing::error!("调度器错误: {}", e);
+                    tracing::error!("Scheduler error: {}", e);
                 }
             }
         }

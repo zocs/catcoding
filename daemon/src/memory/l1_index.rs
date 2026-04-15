@@ -78,22 +78,22 @@ impl L1Index {
     /// 保存 L1 索引
     fn save(&self) -> Result<()> {
         let mut content = String::new();
-        content.push_str("# L1 Index — 场景→定位指针 (≤30行)\n");
-        content.push_str("# 核心原则: 上层只留指针，不写细节\n\n");
+        content.push_str("# L1 Index — Scene→Location Pointers (<=30 lines)\n");
+        content.push_str("# Core: upper layers store pointers only, no details\n\n");
 
-        content.push_str("## MAPPINGS (高频场景)\n");
+        content.push_str("## MAPPINGS (high-frequency scenes)\n");
         let mut mappings: Vec<_> = self.mappings.iter().collect();
         mappings.sort_by_key(|(k, _)| k.as_str());
         for (key, value) in mappings {
             content.push_str(&format!("{} → {}\n", key, value));
         }
 
-        content.push_str("\n## KEYWORDS (低频场景)\n");
+        content.push_str("\n## KEYWORDS (low-frequency scenes)\n");
         for keyword in &self.keywords {
             content.push_str(&format!("{}\n", keyword));
         }
 
-        content.push_str("\n## RULES (避坑准则)\n");
+        content.push_str("\n## RULES (pitfall rules)\n");
         for rule in &self.rules {
             content.push_str(&format!("- {}\n", rule));
         }
@@ -111,7 +111,7 @@ impl L1Index {
     pub fn add_mapping(&mut self, scene: &str, pointer: &str) {
         // 检查是否超过30行限制
         if self.total_lines() >= 30 {
-            tracing::warn!("⚠️ L1 索引已达30行限制，跳过添加: {}", scene);
+            tracing::warn!("L1 index 30-line limit reached, skipping: {}", scene);
             return;
         }
 

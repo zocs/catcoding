@@ -39,49 +39,49 @@ async fn main() -> Result<()> {
         .init();
 
     tracing::info!(
-        "🐱 CatCoding Daemon v{} 启动中...",
+        "CatCoding Daemon v{} starting...",
         env!("CARGO_PKG_VERSION")
     );
 
-    // 皮肤系统
+    // Skin system
     let skin = CatSkin::new();
-    tracing::info!("🐾 {}", skin.info().motto);
+    tracing::info!("{}", skin.info().motto);
     for role in skin.roles() {
-        tracing::info!("  {} {} — {}", role.emoji, role.name, role.description);
+        tracing::info!("  {} {} - {}", role.emoji, role.name, role.description);
     }
 
-    // 数据库（SQLite 冷存储）
+    // Database (SQLite cold storage)
     let db_path =
         std::env::var("DB_PATH").unwrap_or_else(|_| ".catcoding/catcoding.db".to_string());
     std::fs::create_dir_all(".catcoding")?;
     let db = Arc::new(Database::new(&db_path)?);
     db.init_schema().await?;
-    tracing::info!("💾 SQLite 数据库: {}", db_path);
+    tracing::info!("SQLite database: {}", db_path);
 
-    // 状态管理器（内存 + SQLite）
+    // State manager (memory + SQLite)
     let state_manager = Arc::new(StateManager::new().with_db(db.clone()));
-    tracing::info!("💾 状态管理器已初始化（热状态 + 冷存储）");
+    tracing::info!("State manager initialized (hot state + cold storage)");
 
-    // Watchdog（猫头鹰）
+    // Watchdog
     let watchdog_config = WatchdogConfig::default();
     let watchdog = Arc::new(Watchdog::new(watchdog_config.clone()));
     tracing::info!(
-        "🦉 猫头鹰（Watchdog）已就位 — 心跳间隔: {}s, 超时: {}s",
+        "Watchdog started - heartbeat: {}s, timeout: {}s",
         watchdog_config.heartbeat_interval,
         watchdog_config.heartbeat_timeout
     );
     let watchdog_clone = watchdog.clone();
     tokio::spawn(async move { watchdog_clone.start_monitoring().await });
 
-    // Agent 生命周期管理器
+    // Agent lifecycle manager
     let lifecycle_manager = Arc::new(Mutex::new(AgentLifecycleManager::new()));
-    tracing::info!("🐱 Agent 生命周期管理器已初始化");
+    tracing::info!("Agent lifecycle manager initialized");
 
-    // 调度器
+    // Scheduler
     let scheduler_config = SchedulerConfig::default();
     let scheduler = Arc::new(Scheduler::new(scheduler_config.clone(), lifecycle_manager.clone()));
     tracing::info!(
-        "📋 调度器已启动 — 检查间隔: {}s, 最大并发: {}",
+        "Scheduler started - interval: {}s, max concurrent: {}",
         scheduler_config.check_interval,
         scheduler_config.max_concurrent_tasks
     );
@@ -93,13 +93,13 @@ async fn main() -> Result<()> {
             .await;
     });
 
-    // NATS 连接
+    // NATS connection
     let nats_url =
         std::env::var("NATS_URL").unwrap_or_else(|_| "nats://127.0.0.1:4222".to_string());
     match async_nats::connect(&nats_url).await {
         Ok(client) => {
-            tracing::info!("📡 已连接 NATS: {}", nats_url);
-            // 订阅 Agent 心跳
+            tracing::info!("Connected to NATS: {}", nats_url);
+            // Subscribe to agent heartbeats
             let watchdog_for_heartbeat = watchdog.clone();
             let mut sub = client.subscribe("agent.heartbeat").await?;
             tokio::spawn(async move {
@@ -113,32 +113,31 @@ async fn main() -> Result<()> {
             });
         }
         Err(e) => {
-            tracing::warn!("⚠️  NATS 连接失败 ({}): 使用内存模式", e);
-            tracing::info!("💡 提示: 确保 NATS Server 在 {} 运行", nats_url);
+            tracing::warn!("NATS connection failed ({}): using in-memory mode", e);
+            tracing::info!("Hint: ensure NATS Server is running at {}", nats_url);
         }
     }
 
-    // 从 SQLite 加载历史数据
+    // Load history from SQLite
     state_manager.load_from_db("default").await?;
 
-    // L4 记忆系统
+    // L4 memory system
     let memory_dir =
         std::env::var("MEMORY_DIR").unwrap_or_else(|_| ".catcoding/memory".to_string());
     let memory_manager = Arc::new(MemoryManager::new(&memory_dir)?);
-    tracing::info!("🧠 L4 记忆系统已初始化: {}", memory_dir);
-    tracing::info!("  L1 索引: {} 行", memory_manager.l1.line_count());
-    tracing::info!("  L2 事实: {} 条", memory_manager.l2.count());
-    tracing::info!("  L3 技能: {} 个", memory_manager.l3.count());
-    tracing::info!("  L4 会话: {} 条", memory_manager.l4.count());
+    tracing::info!("L4 memory system initialized: {}", memory_dir);
+    tracing::info!("  L1 index: {} lines", memory_manager.l1.line_count());
+    tracing::info!("  L2 facts: {}", memory_manager.l2.count());
+    tracing::info!("  L3 skills: {}", memory_manager.l3.count());
+    tracing::info!("  L4 sessions: {}", memory_manager.l4.count());
 
-    // API 服务器
     // Log buffer
     let log_buffer = std::sync::Arc::new(log_buffer::LogBuffer::new(500));
 
-    // WebSocket 广播通道
+    // WebSocket broadcast channel
     let (ws_tx, _ws_rx) = broadcast::channel::<String>(100);
 
-    // API 服务器状态
+    // API server state
     let api_state = Arc::new(ApiState {
         project_id: "default".to_string(),
         state_manager: state_manager.clone(),
@@ -159,11 +158,11 @@ async fn main() -> Result<()> {
     let addr = format!("{}:{}", host, port);
     let listener = tokio::net::TcpListener::bind(&addr).await?;
 
-    tracing::info!("✅ Daemon 启动完成！");
-    tracing::info!("🌐 Dashboard: http://{}", addr);
-    tracing::info!("📡 API: http://{}/api", addr);
-    tracing::info!("💾 数据库: {}", db_path);
-    tracing::info!("按 Ctrl+C 停止");
+    tracing::info!("Daemon ready");
+    tracing::info!("  Dashboard: http://{}", addr);
+    tracing::info!("  API: http://{}/api", addr);
+    tracing::info!("  Database: {}", db_path);
+    tracing::info!("Press Ctrl+C to stop");
 
     axum::serve(listener, app).await?;
     Ok(())
