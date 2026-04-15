@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { NCard, NStatistic, NSpace, NTag, NProgress, NList, NListItem, NThing, useMessage } from 'naive-ui'
 import { Task, Agent, WatchdogStatus, CatCodingApi, STATUS_CONFIG } from '@/api/types'
 import CatAvatarSVG from '@/components/CatAvatarSVG.vue'
+import CatBackground from '@/components/CatBackground.vue'
 
 const api = new CatCodingApi()
 const message = useMessage()
@@ -49,6 +50,7 @@ onMounted(fetchData)
 
 <template>
   <div class="dashboard-page">
+    <CatBackground />
     <div class="page-title">
       <span class="title-emoji">🏠</span>
       <span class="title-text">CatCoding 总览</span>
@@ -124,6 +126,8 @@ onMounted(fetchData)
 .dashboard-page {
   max-width: 1200px;
   margin: 0 auto;
+  position: relative;
+  z-index: 1;
 }
 
 .page-title {

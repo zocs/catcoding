@@ -1,24 +1,30 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
+import Components from 'unplugin-vue-components/vite'
+import { NaiveUiResolver } from 'unplugin-vue-components/resolvers'
 
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    Components({
+      resolvers: [NaiveUiResolver()],
+    }),
+  ],
   resolve: {
     alias: {
       '@': resolve(__dirname, 'src'),
     },
   },
-  server: {
-    port: 3000,
-    proxy: {
-      '/api': {
-        target: 'http://127.0.0.1:19800',
-        changeOrigin: true,
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vue-vendor': ['vue', 'vue-router', 'pinia'],
+          'echarts': ['echarts'],
+        },
       },
     },
-  },
-  build: {
-    outDir: 'dist',
+    chunkSizeWarningLimit: 800,
   },
 })
