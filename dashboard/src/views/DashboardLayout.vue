@@ -9,8 +9,12 @@
       show-trigger
       @collapse="collapsed = true"
       @expand="collapsed = false"
-      style="background: #1a1a2e"
+      style="background: #fef9f0; border-right: 1px solid #f0e6d6"
     >
+      <div class="sidebar-brand">
+        <span class="brand-icon">🐱</span>
+        <span v-if="!collapsed" class="brand-text">CatCoding</span>
+      </div>
       <n-menu
         v-model:value="activeKey"
         :collapsed="collapsed"
@@ -19,9 +23,13 @@
         :options="menuOptions"
         @update:value="handleMenuSelect"
       />
+      <div class="sidebar-footer" v-if="!collapsed">
+        <LangSwitch />
+        <ThemeSwitch />
+      </div>
     </n-layout-sider>
     <n-layout>
-      <n-layout-content style="padding: 24px; background: #0f0f1a">
+      <n-layout-content style="padding: 24px; background: #faf8f5">
         <router-view />
       </n-layout-content>
     </n-layout>
@@ -38,13 +46,14 @@ import {
 } from 'naive-ui'
 import type { MenuOption } from 'naive-ui'
 import {
-  HomeOutline,
   PeopleOutline,
   BarChartOutline,
   TerminalOutline,
   CodeSlashOutline,
   GridOutline
 } from '@vicons/ionicons5'
+import LangSwitch from '../components/LangSwitch.vue'
+import ThemeSwitch from '../components/ThemeSwitch.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -57,7 +66,6 @@ function renderIcon(icon: any) {
 }
 
 const menuOptions = computed<MenuOption[]>(() => [
-  { label: t('nav.home'), key: 'home', icon: renderIcon(HomeOutline) },
   { label: t('nav.agents'), key: 'agents', icon: renderIcon(PeopleOutline) },
   { label: t('nav.gantt'), key: 'gantt', icon: renderIcon(BarChartOutline) },
   { label: t('nav.terminal'), key: 'terminal', icon: renderIcon(TerminalOutline) },
@@ -67,11 +75,35 @@ const menuOptions = computed<MenuOption[]>(() => [
 
 const activeKey = computed(() => {
   const name = route.name as string
-  if (!name) return 'home'
-  return name
+  return name || 'agents'
 })
 
 function handleMenuSelect(key: string) {
   router.push({ name: key })
 }
 </script>
+
+<style scoped>
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 16px;
+  border-bottom: 1px solid #f0e6d6;
+}
+.brand-icon {
+  font-size: 28px;
+}
+.brand-text {
+  font-size: 18px;
+  font-weight: 700;
+  color: #5a4a3a;
+}
+.sidebar-footer {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  gap: 8px;
+}
+</style>
