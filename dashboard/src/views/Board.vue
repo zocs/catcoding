@@ -282,21 +282,21 @@ onMounted(fetchTasks)
   padding-bottom: 16px;
 }
 
-/* 看板列 — 厨房台面纹理 */
+/* Kanban column */
 .kanban-column {
   min-width: 280px;
   flex: 1;
-  background: linear-gradient(135deg, #faf7f2 0%, #f5f0e8 100%);
+  background: var(--bg-card);
   border-radius: 16px;
   display: flex;
   flex-direction: column;
-  border: 2px solid #e8e0d4;
+  border: 2px solid var(--border-color);
   transition: all 0.3s ease;
   position: relative;
 }
 
 .kanban-column.drag-over {
-  border-color: #f5a623;
+  border-color: var(--accent-orange);
   box-shadow: 0 0 20px rgba(245, 166, 35, 0.3);
   transform: scale(1.02);
 }
@@ -318,12 +318,12 @@ onMounted(fetchTasks)
   padding: 12px;
 }
 
-/* 任务卡片 — 猫耳朵装饰 */
+/* Task card */
 .task-card {
-  background: white;
+  background: var(--bg-page);
   border-radius: 12px;
   padding: 14px;
-  border: 1px solid #e8e0d4;
+  border: 1px solid var(--border-color);
   cursor: grab;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;

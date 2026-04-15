@@ -325,11 +325,11 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   gap: 16px;
 }
 
-/* ═══ Agent 卡片 ═══ */
+/* ═══ Agent Card ═══ */
 .agent-card {
-  background: white;
+  background: var(--bg-card);
   border-radius: 20px;
-  border: 2px solid #f0ebe3;
+  border: 2px solid var(--border-color);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: visible;
@@ -338,8 +338,8 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
 .agent-card:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(245, 166, 35, 0.15);
-  border-color: #f5a623;
+  box-shadow: var(--card-hover-shadow);
+  border-color: var(--accent-orange);
 }
 
 /* 猫耳朵 CSS 装饰 */
@@ -412,7 +412,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   font-size: 14px;
   font-weight: 600;
   opacity: 1;
-  color: #5a4a3a;
+  color: var(--text-primary);
   background: rgba(245, 166, 35, 0.08);
   padding: 1px 8px;
   border-radius: 10px;

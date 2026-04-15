@@ -153,12 +153,12 @@ onMounted(refresh)
 /* 时间标尺 */
 .time-ruler {
   display: flex;
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px solid var(--border-color);
   padding-bottom: 8px;
   margin-bottom: 8px;
   position: sticky;
   top: 0;
-  background: white;
+  background: var(--bg-card);
   z-index: 2;
 }
 
@@ -167,7 +167,7 @@ onMounted(refresh)
   min-width: 200px;
   font-weight: bold;
   font-size: 13px;
-  color: #888;
+  color: var(--text-muted);
   display: flex;
   align-items: center;
 }
@@ -183,14 +183,14 @@ onMounted(refresh)
   width: 60px;
   min-width: 60px;
   font-size: 11px;
-  color: #aaa;
+  color: var(--text-muted);
   text-align: center;
-  border-left: 1px solid #f0f0f0;
+  border-left: 1px solid var(--border-color);
   padding: 4px 0;
 }
 
 .ruler-day.today {
-  color: #f5a623;
+  color: var(--accent-orange);
   font-weight: bold;
   background: rgba(245, 166, 35, 0.08);
 }
@@ -213,14 +213,14 @@ onMounted(refresh)
   left: -16px;
   font-size: 11px;
   white-space: nowrap;
-  color: #f5a623;
+  color: var(--accent-orange);
 }
 
-/* 任务行 */
+/* Task row */
 .gantt-row {
   display: flex;
   align-items: center;
-  border-bottom: 1px solid #f5f5f5;
+  border-bottom: 1px solid var(--border-color);
   min-height: 48px;
   transition: background 0.2s;
 }
@@ -253,7 +253,7 @@ onMounted(refresh)
 
 .row-meta {
   font-size: 11px;
-  color: #aaa;
+  color: var(--text-muted);
 }
 
 /* 甘特条 */
