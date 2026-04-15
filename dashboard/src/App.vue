@@ -8,6 +8,7 @@ import {
   darkTheme
 } from 'naive-ui'
 import type { GlobalThemeOverrides } from 'naive-ui'
+import ClickPaw from './components/ClickPaw.vue'
 
 type ThemeMode = 'light' | 'dark' | 'system'
 
@@ -197,7 +198,9 @@ provide('setThemeMode', setThemeMode)
     <n-message-provider>
       <n-dialog-provider>
         <div style="height: 100vh; position: relative">
-          <router-view />
+          <ClickPaw>
+        <router-view />
+      </ClickPaw>
         </div>
       </n-dialog-provider>
     </n-message-provider>

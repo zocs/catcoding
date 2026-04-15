@@ -15,6 +15,7 @@ declare module 'vue' {
     CatAvatar: typeof import('./src/components/CatAvatar.vue')['default']
     CatAvatarSVG: typeof import('./src/components/CatAvatarSVG.vue')['default']
     CatBackground: typeof import('./src/components/CatBackground.vue')['default']
+    ClickPaw: typeof import('./src/components/ClickPaw.vue')['default']
     EasterEgg: typeof import('./src/components/EasterEgg.vue')['default']
     LangSwitch: typeof import('./src/components/LangSwitch.vue')['default']
     NButton: typeof import('naive-ui')['NButton']

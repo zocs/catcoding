@@ -32,10 +32,10 @@ Scout (Fox)      ✅ Active    → Reading docs
 NATS: 🟢 Connected  |  Tasks: 5 active, 12 done`,
   'catcoding mice': `🐭 Bug Report
 ━━━━━━━━━━━━━━━━━━━━━━━━
-[CRITICAL] 🐉 恶龙 — Memory leak in daemon/src/state.rs:42
-[HIGH]     🐀 大老鼠 — Race condition in scheduler
-[MEDIUM]   🐀 大老鼠 — Missing error handling in API
-[LOW]      🐭 小老鼠 — Typo in README.md
+[CRITICAL] 🐉 Dragon — Memory leak in daemon/src/state.rs:42
+[HIGH]     🐀 Rat — Race condition in scheduler
+[MEDIUM]   🐀 Rat — Missing error handling in API
+[LOW]      🐭 Mouse — Typo in README.md
 ━━━━━━━━━━━━━━━━━━━━━━━━
 Total: 4 mice | Caught: 0 | Hunting: 1`,
   'catcoding feed': `🐟 Feeding the team...

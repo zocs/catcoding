@@ -32,18 +32,18 @@ const today = ref(0) // simulated "today" marker
 
 // Demo 任务数据 — 完整的项目甘特图
 const DEMO_TASKS: Task[] = [
-  { id: '1', title: 'NATS 消息总线集成', status: 'done', assigned_to: 'core_dev', cat_name: '英短蓝猫', cat_emoji: '🐱', start: 0, duration: 3, color: '#2ecc71' },
-  { id: '2', title: 'Watchdog 健康检测', status: 'done', assigned_to: 'backend', cat_name: '缅因猫', cat_emoji: '🐱', start: 2, duration: 4, color: '#2ecc71' },
-  { id: '3', title: 'Dashboard Vue3 基础框架', status: 'done', assigned_to: 'frontend', cat_name: '橘猫', cat_emoji: '🐱', start: 1, duration: 5, color: '#2ecc71' },
-  { id: '4', title: 'Rust Daemon CLI', status: 'done', assigned_to: 'core_dev', cat_name: '英短蓝猫', cat_emoji: '🐱', start: 3, duration: 3, color: '#2ecc71' },
-  { id: '5', title: 'Python Agent SDK', status: 'active', assigned_to: 'core_dev', cat_name: '英短蓝猫', cat_emoji: '🐱', start: 6, duration: 5, color: '#3498db' },
-  { id: '6', title: 'Kanban 看板视图', status: 'active', assigned_to: 'frontend', cat_name: '橘猫', cat_emoji: '🐱', start: 6, duration: 4, color: '#3498db' },
-  { id: '7', title: '代码评审工作流', status: 'reviewing', assigned_to: 'reviewer', cat_name: '玄猫', cat_emoji: '🖤', start: 8, duration: 3, color: '#9b59b6' },
-  { id: '8', title: 'Bug 追踪动画系统', status: 'active', assigned_to: 'frontend', cat_name: '橘猫', cat_emoji: '🐱', start: 10, duration: 3, color: '#3498db' },
-  { id: '9', title: 'Agent 间通信协议', status: 'pending', assigned_to: 'backend', cat_name: '缅因猫', cat_emoji: '🐱', start: 11, duration: 4, color: '#f39c12' },
-  { id: '10', title: 'CI/CD 自动部署', status: 'pending', assigned_to: 'devops', cat_name: '三花猫', cat_emoji: '🐱', start: 13, duration: 3, color: '#f39c12' },
-  { id: '11', title: 'L4 记忆系统', status: 'pending', assigned_to: 'pm', cat_name: '暹罗猫', cat_emoji: '🐱', start: 15, duration: 5, color: '#e74c3c' },
-  { id: '12', title: '多 Agent 协同测试', status: 'pending', assigned_to: 'qa', cat_name: '波斯猫', cat_emoji: '🐱', start: 16, duration: 4, color: '#e74c3c' },
+  { id: '1', title: t('gantt.task_nats'), status: 'done', assigned_to: 'core_dev', cat_name: 'British Blue', cat_emoji: '🐱', start: 0, duration: 3, color: '#2ecc71' },
+  { id: '2', title: t('gantt.task_watchdog'), status: 'done', assigned_to: 'backend', cat_name: 'Maine Coon', cat_emoji: '🐱', start: 2, duration: 4, color: '#2ecc71' },
+  { id: '3', title: t('gantt.task_dashboard'), status: 'done', assigned_to: 'frontend', cat_name: 'Orange', cat_emoji: '🐱', start: 1, duration: 5, color: '#2ecc71' },
+  { id: '4', title: t('gantt.task_cli'), status: 'done', assigned_to: 'core_dev', cat_name: 'British Blue', cat_emoji: '🐱', start: 3, duration: 3, color: '#2ecc71' },
+  { id: '5', title: t('gantt.task_sdk'), status: 'active', assigned_to: 'core_dev', cat_name: 'British Blue', cat_emoji: '🐱', start: 6, duration: 5, color: '#3498db' },
+  { id: '6', title: t('gantt.task_board'), status: 'active', assigned_to: 'frontend', cat_name: 'Orange', cat_emoji: '🐱', start: 6, duration: 4, color: '#3498db' },
+  { id: '7', title: t('gantt.task_review'), status: 'reviewing', assigned_to: 'reviewer', cat_name: 'Black', cat_emoji: '🖤', start: 8, duration: 3, color: '#9b59b6' },
+  { id: '8', title: t('gantt.task_bug'), status: 'active', assigned_to: 'frontend', cat_name: 'Orange', cat_emoji: '🐱', start: 10, duration: 3, color: '#3498db' },
+  { id: '9', title: 'Agent IPC Protocol', status: 'pending', assigned_to: 'backend', cat_name: 'Maine Coon', cat_emoji: '🐱', start: 11, duration: 4, color: '#f39c12' },
+  { id: '10', title: 'CI/CD Auto Deploy', status: 'pending', assigned_to: 'devops', cat_name: 'Calico', cat_emoji: '🐱', start: 13, duration: 3, color: '#f39c12' },
+  { id: '11', title: 'L4 Memory System', status: 'pending', assigned_to: 'pm', cat_name: 'Siamese', cat_emoji: '🐱', start: 15, duration: 5, color: '#e74c3c' },
+  { id: '12', title: 'Multi-Agent Testing', status: 'pending', assigned_to: 'qa', cat_name: 'Persian', cat_emoji: '🐱', start: 16, duration: 4, color: '#e74c3c' },
 ]
 
 const totalDays = computed(() => Math.max(...DEMO_TASKS.map(t => t.start + t.duration)) + 1)
@@ -71,7 +71,7 @@ async function refresh() {
       // 如果有真实数据，用真实数据
       tasks.value = data.tasks.map((t: any, i: number) => ({
         ...t,
-        cat_name: t.assigned_to || '未分配',
+        cat_name: t.assigned_to || '—',
         cat_emoji: '🐱',
         start: i * 2,
         duration: 3 + Math.floor(Math.random() * 4),
@@ -83,7 +83,7 @@ async function refresh() {
   } catch {
     // Demo 模式
     tasks.value = DEMO_TASKS
-    today.value = 9 // 模拟第 9 天
+    today.value = 9 // Demo day
     message.info('🎮 ' + t('gantt.demo'))
   }
 }
@@ -93,7 +93,7 @@ onMounted(refresh)
 
 <template>
   <div class="gantt-page" :class="{ mobile: isMobile }">
-    <n-page-header :title="isMobile ? '📊 甘特图' : '📊 ' + t('gantt.title')" :subtitle="isMobile ? '' : t('gantt.subtitle')">
+    <n-page-header :title="'📊 ' + t('gantt.title')" :subtitle="isMobile ? '' : t('gantt.subtitle')">
       <template #extra>
         <n-button @click="refresh" round :size="isMobile ? 'small' : 'medium'">
           🔄 <span v-if="!isMobile">{{ t('gantt.refresh') }}</span>

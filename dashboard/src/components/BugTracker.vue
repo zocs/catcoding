@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, computed } from 'vue'
+const { t } = useI18n()
+
 
 interface Bug {
   id: string
@@ -19,10 +22,10 @@ const emit = defineEmits<{
 }>()
 
 const BUG_CONFIG: Record<string, { emoji: string; label: string; color: string; size: string }> = {
-  mouse:      { emoji: '🐭', label: '小老鼠', color: '#909399', size: '24px' },
-  big_mouse:  { emoji: '🐀', label: '大老鼠', color: '#e6a23c', size: '32px' },
-  bat:        { emoji: '🦇', label: '蝙蝠',   color: '#7b68ee', size: '36px' },
-  dragon:     { emoji: '🐉', label: '恶龙',   color: '#f56c6c', size: '48px' },
+  mouse:      { emoji: '🐭', label: t('bugHunter.mouse'), color: '#909399', size: '24px' },
+  big_mouse:  { emoji: '🐀', label: t('bugHunter.rat'), color: '#e6a23c', size: '32px' },
+  bat:        { emoji: '🦇', label: t('bugHunter.bat'),   color: '#7b68ee', size: '36px' },
+  dragon:     { emoji: '🐉', label: t('bugHunter.dragon'),   color: '#f56c6c', size: '48px' },
 }
 
 const activeBugs = computed(() => props.bugs.filter(b => b.status === 'alive' || b.status === 'chasing'))
@@ -41,17 +44,17 @@ function catchBug(bug: Bug) {
       <div class="stat alive">
         <span class="icon">🐛</span>
         <span class="count">{{ activeBugs.length }}</span>
-        <span class="label">待抓</span>
+        <span class="label">{{ t("bugHunter.pending") }}</span>
       </div>
       <div class="stat caught">
         <span class="icon">🐱</span>
         <span class="count">{{ caughtBugs.length }}</span>
-        <span class="label">已抓</span>
+        <span class="label">{{ t("bugHunter.caught") }}</span>
       </div>
       <div class="stat escaped">
         <span class="icon">💨</span>
         <span class="count">{{ escapedBugs.length }}</span>
-        <span class="label">逃走</span>
+        <span class="label">{{ t("bugHunter.escaped") }}</span>
       </div>
     </div>
 
@@ -86,7 +89,7 @@ function catchBug(bug: Bug) {
 
           <!-- 抓捕按钮 -->
           <div class="catch-btn" @click.stop="catchBug(bug)">
-            🐾 抓！
+            🐾 {{ t("bugHunter.caught") }}!
           </div>
         </div>
       </TransitionGroup>
@@ -94,7 +97,7 @@ function catchBug(bug: Bug) {
 
     <!-- 已抓到的 Bug 展示 -->
     <div v-if="caughtBugs.length > 0" class="caught-section">
-      <div class="section-title">🐱 猫咪战绩</div>
+      <div class="section-title">🐱 {{ t("bugHunter.title") }}</div>
       <div class="caught-grid">
         <div v-for="bug in caughtBugs" :key="bug.id" class="caught-bug">
           <span class="caught-emoji">{{ BUG_CONFIG[bug.level].emoji }}</span>

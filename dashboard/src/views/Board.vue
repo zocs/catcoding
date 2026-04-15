@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { NPageHeader, NSpace, NCard, NTag, NBadge, NButton, NScrollbar, NEmpty, NAvatar, NModal, NInput, NForm, NFormItem, useMessage } from 'naive-ui'
 import { Task, TaskStatus, KANBAN_COLUMNS, STATUS_CONFIG, CatCodingApi, AGENT_ROLES_FIXED } from '@/api/types'
 import CatAvatar from '@/components/CatAvatar.vue'
 import EasterEgg from '@/components/EasterEgg.vue'
 import { useResponsive } from '@/composables/useResponsive'
+const { t } = useI18n()
+
 
 const { isMobile, kanbanMode } = useResponsive()
 
@@ -30,12 +33,12 @@ async function fetchTasks() {
   } catch {
     // Mock data
     tasks.value = [
-      { id: '1', title: '实现用户登录', description: 'JWT 认证 + OAuth2', status: 'active', assigned_to: 'core_dev', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
-      { id: '2', title: 'Vue 3 看板', description: 'Naive UI 猫咪主题', status: 'reviewing', assigned_to: 'frontend', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
-      { id: '3', title: 'NATS 路由优化', description: 'Rust 后端性能调优', status: 'ready', assigned_to: 'backend', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
-      { id: '4', title: '部署脚本 v2', description: 'CI/CD 增强', status: 'done', assigned_to: 'deploy', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
-      { id: '5', title: '单元测试补全', description: '覆盖率 > 80%', status: 'pending', assigned_to: 'tester', depends_on: ['3'], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
-      { id: '6', title: '代码审查 #12', description: '玄猫在扫荡', status: 'active', assigned_to: 'reviewer', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
+      { id: '1', title: t('board.task_login'), description: t('board.task_login_desc'), status: 'active', assigned_to: 'core_dev', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
+      { id: '2', title: t('board.task_kanban'), description: t('board.task_kanban_desc'), status: 'reviewing', assigned_to: 'frontend', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
+      { id: '3', title: t('board.task_nats'), description: t('board.task_nats_desc'), status: 'ready', assigned_to: 'backend', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
+      { id: '4', title: t('board.task_deploy'), description: t('board.task_deploy_desc'), status: 'done', assigned_to: 'deploy', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
+      { id: '5', title: t('board.task_tests'), description: t('board.task_tests_desc'), status: 'pending', assigned_to: 'tester', depends_on: ['3'], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
+      { id: '6', title: t('board.task_review'), description: t('board.task_review_desc'), status: 'active', assigned_to: 'reviewer', depends_on: [], created_at: new Date().toISOString(), updated_at: new Date().toISOString(), artifacts: [] },
     ]
   } finally {
     loading.value = false
@@ -49,7 +52,7 @@ function getTasksByStatus(statuses: TaskStatus[]) {
 async function handleStatusChange(taskId: string, newStatus: TaskStatus) {
   try {
     await api.updateTaskStatus(taskId, newStatus)
-    message.success('状态已更新 ✨')
+    message.success(t('board.statusUpdated'))
     fetchTasks()
   } catch {
     // Mock 本地更新
@@ -123,16 +126,16 @@ onMounted(fetchTasks)
 
 <template>
   <div class="board-page" :class="{ mobile: isMobile }" @click="addPawPrint">
-    <n-page-header title="🐱 任务看板" subtitle="猫咪团队的做菜进度">
+    <n-page-header :title="'🐱 ' + t('board.title')" :subtitle="t('board.subtitle')">
       <template #extra>
         <n-space>
           <n-button @click="fetchTasks" :loading="loading" round :size="isMobile ? 'small' : 'medium'">
             🔄
-            <span v-if="!isMobile"> 刷新</span>
+            <span v-if="!isMobile"> {{ t('gantt.refresh') }}</span>
           </n-button>
           <n-button type="primary" @click="showCreateTask = true" round :size="isMobile ? 'small' : 'medium'">
             ➕
-            <span v-if="!isMobile"> 创建任务</span>
+            <span v-if="!isMobile"> {{ t('board.addTask') }}</span>
           </n-button>
         </n-space>
       </template>
@@ -199,7 +202,7 @@ onMounted(fetchTasks)
                     />
                     <span class="agent-name">{{ getAgentForTask(task.assigned_to)?.name || task.assigned_to }}</span>
                   </n-space>
-                  <span v-else class="unassigned">🐱 未分配</span>
+                  <span v-else class="unassigned">—</span>
 
                   <!-- 快速推进按钮 -->
                   <n-button
@@ -209,7 +212,7 @@ onMounted(fetchTasks)
                     quaternary
                     @click.stop="handleStatusChange(task.id, task.status === 'active' ? 'reviewing' : task.status === 'reviewing' ? 'done' : 'active')"
                   >
-                    推进 →
+                    {{ t("board.inProgress") }} →
                   </n-button>
                 </n-space>
               </div>
@@ -217,7 +220,7 @@ onMounted(fetchTasks)
 
             <n-empty
               v-if="getTasksByStatus(col.statuses as TaskStatus[]).length === 0"
-              description="这里没有猫咪的任务 🐱"
+              :description="t('common.noData')"
               class="empty-col"
             />
           </n-space>
@@ -226,15 +229,15 @@ onMounted(fetchTasks)
     </div>
 
     <!-- 创建任务对话框 -->
-    <n-modal v-model:show="showCreateTask" preset="dialog" title="🐱 创建新任务">
+    <n-modal v-model:show="showCreateTask" preset="dialog" :title="'🐱 ' + t('board.addTask')">
       <n-form :model="newTask">
-        <n-form-item label="任务标题">
-          <n-input v-model:value="newTask.title" placeholder="例如：实现登录功能" />
+        <n-form-item :label="t('board.todo')">
+          <n-input v-model:value="newTask.title" placeholder="Task title..." />
         </n-form-item>
-        <n-form-item label="任务描述">
-          <n-input v-model:value="newTask.description" type="textarea" placeholder="详细描述..." />
+        <n-form-item label="Description">
+          <n-input v-model:value="newTask.description" type="textarea" placeholder="Details..." />
         </n-form-item>
-        <n-form-item label="分配给">
+        <n-form-item label="Assign to">
           <n-space>
             <n-tag
               v-for="(info, role) in AGENT_ROLES_FIXED"
@@ -251,7 +254,7 @@ onMounted(fetchTasks)
         </n-form-item>
       </n-form>
       <template #action>
-        <n-button type="primary" @click="showCreateTask = false">创建 🐾</n-button>
+        <n-button type="primary" @click="showCreateTask = false">Create 🐾</n-button>
       </template>
     </n-modal>
 

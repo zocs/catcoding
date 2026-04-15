@@ -1,9 +1,12 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, onMounted, nextTick } from 'vue'
 import { NPageHeader, NCard, NInput, NButton, NSpace, NTag, NLog, NProgress, useMessage } from 'naive-ui'
 import { CatCodingApi, AGENT_ROLES_FIXED } from '@/api/types'
 import BugTracker from '@/components/BugTracker.vue'
 import EasterEgg from '@/components/EasterEgg.vue'
+const { t } = useI18n()
+
 
 const api = new CatCodingApi()
 const message = useMessage()
@@ -29,39 +32,39 @@ const currentReviewer = ref('')
 
 // 模拟的代码评审流程
 const reviewSteps = [
-  { delay: 500,  msg: '📡 正在呼叫 @reviewer (玄猫)...', emoji: '🐱' },
-  { delay: 1200, msg: '🖤 玄猫已就位，开始扫描代码仓库...', emoji: '👀' },
-  { delay: 2000, msg: '🔍 扫描 daemon/src/api/mod.rs...', emoji: '📂' },
-  { delay: 2800, msg: '🔍 扫描 daemon/src/scheduler.rs...', emoji: '📂' },
-  { delay: 3500, msg: '🔍 扫描 agents/base/agent.py...', emoji: '📂' },
-  { delay: 4200, msg: '🔍 扫描 dashboard/src/views/Board.vue...', emoji: '📂' },
+  { delay: 500,  msg: t('command.demo_calling'), emoji: '🐱' },
+  { delay: 1200, msg: t('command.demo_arrived'), emoji: '👀' },
+  { delay: 2000, msg: t('command.demo_scanning', { file: 'daemon/src/api/mod.rs' }), emoji: '📂' },
+  { delay: 2800, msg: t('command.demo_scanning', { file: 'daemon/src/scheduler.rs' }), emoji: '📂' },
+  { delay: 3500, msg: t('command.demo_scanning', { file: 'agents/base/agent.py' }), emoji: '📂' },
+  { delay: 4200, msg: t('command.demo_scanning', { file: 'dashboard/src/views/Board.vue' }), emoji: '📂' },
   // 发现 Bug
-  { delay: 5000, msg: '🐭 发现！ 小老鼠级: 未处理的 unwrap() 调用', emoji: '🚨', bug: { id: 'b1', level: 'mouse' as const, title: '未处理的 unwrap() 调用', file: 'daemon/src/api/mod.rs:45' } },
-  { delay: 5800, msg: '🐀 发现！ 大老鼠级: 缺少错误处理的 HTTP 请求', emoji: '🚨', bug: { id: 'b2', level: 'big_mouse' as const, title: '缺少错误处理的 HTTP 请求', file: 'daemon/src/scheduler.rs:112' } },
-  { delay: 6500, msg: '🐭 发现！ 小老鼠级: 未使用的 import', emoji: '🔍', bug: { id: 'b3', level: 'mouse' as const, title: '未使用的 import', file: 'agents/base/agent.py:3' } },
-  { delay: 7500, msg: '🦇 发现！ 蝙蝠级: N+1 查询问题（第三次出现）', emoji: '🚨', bug: { id: 'b4', level: 'bat' as const, title: 'N+1 查询问题', file: 'daemon/src/db.rs:67' } },
+  { delay: 5000, msg: t('command.demo_found_mouse'), emoji: '🚨', bug: { id: 'b1', level: 'mouse' as const, title: '未处理的 unwrap() 调用', file: 'daemon/src/api/mod.rs:45' } },
+  { delay: 5800, msg: t('command.demo_found_rat'), emoji: '🚨', bug: { id: 'b2', level: 'big_mouse' as const, title: '缺少错误处理的 HTTP 请求', file: 'daemon/src/scheduler.rs:112' } },
+  { delay: 6500, msg: t('command.demo_found_mouse'), emoji: '🔍', bug: { id: 'b3', level: 'mouse' as const, title: '未使用的 import', file: 'agents/base/agent.py:3' } },
+  { delay: 7500, msg: t('command.demo_found_rat'), emoji: '🚨', bug: { id: 'b4', level: 'bat' as const, title: 'N+1 查询问题', file: 'daemon/src/db.rs:67' } },
   // 开始抓老鼠
-  { delay: 8500, msg: '🐾 玄猫锁定目标...开始追捕！', emoji: '🏃' },
-  { delay: 9200, msg: '🐱💨 玄猫追上了 b1！', emoji: '🎯', catchBug: 'b1' },
-  { delay: 9800, msg: '🐱💨 玄猫追上了 b3！', emoji: '🎯', catchBug: 'b3' },
+  { delay: 8500, msg: '🐾 Target locked...hunting!', emoji: '🏃' },
+  { delay: 9200, msg: '🐱💨 Caught b1!', emoji: '🎯', catchBug: 'b1' },
+  { delay: 9800, msg: '🐱💨 Caught b3!', emoji: '🎯', catchBug: 'b3' },
   // 指派修复
-  { delay: 10500, msg: '📋 玄猫生成《老鼠检测报告》...', emoji: '📝' },
-  { delay: 11200, msg: '📨 指派 @core_dev (英短蓝猫) 修复大老鼠 b2', emoji: '🐱' },
-  { delay: 11800, msg: '📨 指派 @backend (缅因猫) 修复蝙蝠 b4', emoji: '🐱' },
+  { delay: 10500, msg: '📋 Generating report...', emoji: '📝' },
+  { delay: 11200, msg: '📨 Assign @core_dev to fix b2', emoji: '🐱' },
+  { delay: 11800, msg: '📨 Assign @backend to fix b4', emoji: '🐱' },
   // 英短修复
-  { delay: 12500, msg: '🐱 英短蓝猫开始修复 b2...', emoji: '🔧' },
-  { delay: 13200, msg: '✅ 英短蓝猫修复了 b2！', emoji: '🎯', catchBug: 'b2' },
+  { delay: 12500, msg: '🐱 @core_dev fixing b2...', emoji: '🔧' },
+  { delay: 13200, msg: '✅ @core_dev fixed b2!', emoji: '🎯', catchBug: 'b2' },
   // 缅因猫修复
-  { delay: 14000, msg: '🐱 缅因猫开始修复 b4 (蝙蝠很难缠)...', emoji: '🔧' },
-  { delay: 15000, msg: '✅ 缅因猫终于抓住了 b4！蝙蝠被消灭！', emoji: '🎯', catchBug: 'b4' },
+  { delay: 14000, msg: '🐱 @backend fixing b4...', emoji: '🔧' },
+  { delay: 15000, msg: '✅ @backend fixed b4!', emoji: '🎯', catchBug: 'b4' },
   // 报告
-  { delay: 16000, msg: '📊 ===== 老鼠检测报告 =====', emoji: '📋' },
-  { delay: 16200, msg: '   扫描文件: 4', emoji: '  ' },
-  { delay: 16400, msg: '   发现 Bug: 4 (小老鼠×2, 大老鼠×1, 蝙蝠×1)', emoji: '  ' },
-  { delay: 16600, msg: '   已修复: 4', emoji: '  ' },
-  { delay: 16800, msg: '   逃走: 0', emoji: '  ' },
-  { delay: 17000, msg: '   状态: ✅ 全部清除！', emoji: '  ' },
-  { delay: 17500, msg: '🎉 代码评审完成！猫咪团队干得漂亮！', emoji: '🐱' },
+  { delay: 16000, msg: '📊 ===== Bug Report =====', emoji: '📋' },
+  { delay: 16200, msg: '   Files scanned: 4', emoji: '  ' },
+  { delay: 16400, msg: '   Bugs found: 4', emoji: '  ' },
+  { delay: 16600, msg: '   Fixed: 4', emoji: '  ' },
+  { delay: 16800, msg: '   Escaped: 0', emoji: '  ' },
+  { delay: 17000, msg: '   Status: ✅ All cleared!', emoji: '  ' },
+  { delay: 17500, msg: '🎉 Review complete! Good work team!', emoji: '🐱' },
 ]
 
 function addLog(msg: string, type: 'info' | 'success' | 'error' | 'command' | 'cat' = 'info') {
@@ -88,20 +91,20 @@ async function handleExecute() {
     await runCodeReview()
   } else if (cmd === '/magic') {
     easterEggRef.value?.triggerEgg('magic')
-    addLog('✨ 魔术猫出现！变变变...', 'cat')
+    addLog('✨ Magic cat appears!', 'cat')
   } else if (cmd === '/loaf') {
     easterEggRef.value?.triggerEgg('all_idle')
-    addLog('🐱🍞 全体猫咪进入 loaf 模式！', 'cat')
+    addLog('🐱🍞 All cats in loaf mode!', 'cat')
   } else if (cmd === '/tiger') {
     easterEggRef.value?.triggerEgg('streak_10')
-    addLog('🐯 猫咪觉醒了老虎之力！', 'cat')
+    addLog('🐯 Tiger power activated!', 'cat')
   } else {
     loading.value = true
     try {
       await api.sendCommand(cmd)
-      addLog(`指令 "${cmd}" 已下达。`, 'success')
+      addLog(`Command "${cmd}" sent.`, 'success')
     } catch {
-      addLog(`执行失败，但猫咪不会放弃！`, 'error')
+      addLog('Execution failed, but cats never give up!', 'error')
     } finally {
       loading.value = false
     }
@@ -112,7 +115,7 @@ async function runCodeReview() {
   reviewActive.value = true
   bugs.value = []
   reviewProgress.value = 0
-  currentReviewer.value = '玄猫'
+  currentReviewer.value = 'Black Cat'
   loading.value = true
 
   for (const step of reviewSteps) {
@@ -159,7 +162,7 @@ function handleCatchBug(bugId: string) {
   const bug = bugs.value.find(b => b.id === bugId)
   if (bug && bug.status === 'alive') {
     bug.status = 'chasing'
-    addLog(`🐾 你手动抓住了 ${bug.title}！好猫咪！`, 'cat')
+    addLog(`🐾 You caught ${bug.title}! Good cat!`, 'cat')
     setTimeout(() => {
       if (bug) bug.status = 'caught'
     }, 600)
@@ -167,18 +170,18 @@ function handleCatchBug(bugId: string) {
 }
 
 onMounted(() => {
-  addLog('🐱 CatCoding 终端已就绪。', 'cat')
-  addLog('输入 /code-review 开启自动评审流', 'info')
-  addLog('彩蛋指令: /magic /loaf /tiger', 'info')
+  addLog('🐱 CatCoding terminal ready.', 'cat')
+  addLog('Type /code-review to start auto review', 'info')
+  addLog('Easter eggs: /magic /loaf /tiger', 'info')
 })
 </script>
 
 <template>
   <div class="command-page">
-    <n-page-header title="🐱 命令终端" subtitle="直接指挥猫咪团队">
+    <n-page-header :title="'🐱 ' + t('command.title')" :subtitle="t('command.subtitle')">
       <template #extra>
         <n-tag v-if="reviewActive" type="warning" round>
-          🔍 玄猫评审中...
+          🔍 {{ t("command.autoReview") }}...
         </n-tag>
       </template>
     </n-page-header>
@@ -188,7 +191,7 @@ onMounted(() => {
       <n-card v-if="reviewActive" class="progress-card">
         <n-space align="center">
           <span class="reviewer-emoji">🖤</span>
-          <span>玄猫正在评审...</span>
+          <span>{{ t("command.autoReview") }}...</span>
           <n-progress
             type="line"
             :percentage="reviewProgress"
@@ -217,7 +220,7 @@ onMounted(() => {
         <n-space>
           <n-input
             v-model:value="command"
-            placeholder="输入指令..."
+            :placeholder="t('command.inputPlaceholder')"
             @keyup.enter="handleExecute"
             style="width: 500px"
             :disabled="loading"
@@ -229,29 +232,29 @@ onMounted(() => {
             </template>
           </n-input>
           <n-button type="primary" @click="handleExecute" :loading="loading" round>
-            🐾 执行
+            🐾 {{ t("command.send") }}
           </n-button>
         </n-space>
 
         <!-- 快捷指令标签 -->
         <div class="hints">
           <n-tag size="small" quaternary round @click="command = '/code-review'">
-            /code-review 🖤 代码评审
+            /code-review 🖤 Code Review
           </n-tag>
           <n-tag size="small" quaternary round @click="command = '/magic'">
-            /magic ✨ 魔术猫
+            /magic ✨ Magic Cat
           </n-tag>
           <n-tag size="small" quaternary round @click="command = '/loaf'">
-            /loaf 🍞 猫咪 loaf
+            /loaf 🍞 Loaf Mode
           </n-tag>
           <n-tag size="small" quaternary round @click="command = '/tiger'">
-            /tiger 🐯 老虎之力
+            /tiger 🐯 Tiger Power
           </n-tag>
           <n-tag size="small" quaternary round @click="command = 'status'">
-            status 📊 状态
+            status 📊 Status
           </n-tag>
           <n-tag size="small" quaternary round @click="command = 'deploy'">
-            deploy 🚀 部署
+            deploy 🚀 Deploy
           </n-tag>
         </div>
       </n-card>

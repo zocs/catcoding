@@ -26,9 +26,9 @@ const showParticles = ref<Record<string, boolean>>({})
 
 // 动物适配食物
 const ANIMAL_FOOD: Record<string, { emoji: string; name: string }> = {
-  mascot:     { emoji: '🎋', name: '竹子' },
-  tech_scout: { emoji: '🫐', name: '浆果' },
-  watchdog:   { emoji: '🐭', name: '老鼠' },
+  mascot:     { emoji: '🎋', name: t('agentsExt.food_bamboo') },
+  tech_scout: { emoji: '🫐', name: t('agentsExt.food_berry') },
+  watchdog:   { emoji: '🐭', name: t('agentsExt.food_mouse') },
 }
 
 function getFoodEmoji(role: string): string {
@@ -36,20 +36,20 @@ function getFoodEmoji(role: string): string {
 }
 
 function getFoodName(role: string): string {
-  return ANIMAL_FOOD[role]?.name || '小鱼干'
+  return ANIMAL_FOOD[role]?.name || t('agentsExt.food_fish')
 }
 
 // 吉祥物互动消息
 const MASCOT_REACTIONS: Record<number, { msg: string; mood: string; trigger?: string }> = {
-  1:  { msg: '🐼 大熊猫啃了一口竹子...', mood: 'eating' },
-  2:  { msg: '🎋 大熊猫又吃了根竹笋！', mood: 'eating' },
-  3:  { msg: '🐼 大熊猫打了个滚！肚皮朝天~', mood: 'rolling' },
-  5:  { msg: '🎋 大熊猫开始倒立行走？！', mood: 'handstand' },
-  7:  { msg: '😴 大熊猫突然犯困了...zzz', mood: 'sleeping' },
-  8:  { msg: '💤 大熊猫睡着了，发出呼噜声...', mood: 'sleeping' },
-  10: { msg: '🎉 大熊猫突然跳起来了！开启派对模式！', mood: 'party', trigger: 'panda_party' },
-  12: { msg: '🎋 大熊猫变出了满屏竹子！', mood: 'magic' },
-  15: { msg: '✨ 传说中的金色大熊猫出现了！！', mood: 'golden', trigger: 'golden_panda' },
+  1:  { msg: t('agentsExt.panda_eats'), mood: 'eating' },
+  2:  { msg: t('agentsExt.panda_eats2'), mood: 'eating' },
+  3:  { msg: t('agentsExt.panda_rolls'), mood: 'rolling' },
+  5:  { msg: t('agentsExt.panda_handstand'), mood: 'handstand' },
+  7:  { msg: t('agentsExt.panda_sleepy'), mood: 'sleeping' },
+  8:  { msg: t('agentsExt.panda_sleeping'), mood: 'sleeping' },
+  10: { msg: t('agentsExt.panda_party'), mood: 'party', trigger: 'panda_party' },
+  12: { msg: t('agentsExt.panda_magic'), mood: 'magic' },
+  15: { msg: t('agentsExt.panda_golden'), mood: 'golden', trigger: 'golden_panda' },
 }
 
 onMounted(() => {
@@ -78,7 +78,7 @@ async function fetchAgents() {
 // "投喂"互动
 function feedAgent(role: string) {
   feedCount.value[role] = (feedCount.value[role] || 0) + 1
-  message.success(`🐟 投喂了 ${getAgentInfo(role)?.name}！(第 ${feedCount.value[role]} 条小鱼干)`)
+  message.success(t('agentsExt.feedSuccess', { name: getAgentInfo(role)?.name, count: feedCount.value[role] }))
 
   // 投喂 5 次触发彩蛋
   if (feedCount.value[role] === 5) {
@@ -123,7 +123,7 @@ function interactMascot(role: string) {
 
   // 超过 15 次循环金熊猫彩蛋
   if (count > 15 && count % 5 === 0) {
-    message.success('✨ 金色大熊猫对你眨了眨眼！')
+    message.success(t('agentsExt.golden_wink'))
     showParticles.value[role] = true
     setTimeout(() => { showParticles.value[role] = false }, 1500)
   }
@@ -137,7 +137,7 @@ function getAgentInfo(role: string) {
 }
 
 function getStatusLabel(status: string) {
-  const map: Record<string, string> = { idle: '😴 休息中', active: '🔧 工作中', busy: '⚡ 繁忙', error: '🙀 出错了' }
+  const map: Record<string, string> = { idle: '😴 ' + t('agentsExt.idle'), active: '🔧 ' + t('agentsExt.working'), busy: '⚡ ' + t('agentsExt.busy'), error: '🙀 ' + t('agentsExt.error') }
   return map[status] || status
 }
 
@@ -154,11 +154,11 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
 <template>
   <div class="agents-page" :class="{ 'mobile': isMobile }">
-    <n-page-header :title="isMobile ? '🐱 猫咪面板' : '🐱 猫咪面板'" subtitle="Agent 团队实时状态">
+    <n-page-header :title="'🐱 ' + t('agents.title')" :subtitle="t('agents.title')">
       <template #extra>
         <n-space>
           <n-button @click="fetchAgents" :loading="loading" round :size="isMobile ? 'small' : 'medium'">
-            🔄 刷新
+            🔄 {{ t("agentsExt.refresh") }}
           </n-button>
         </n-space>
       </template>
@@ -166,7 +166,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
     <!-- 常驻 Agent -->
     <div class="agent-section" v-if="residents.length > 0">
-      <div class="section-title">🏠 常驻猫咪</div>
+      <div class="section-title">🏠 {{ t("agentsExt.section_resident") }}</div>
       <div class="agent-grid" :style="{ '--cols': gridCols }">
         <div
           v-for="agent in residents"
@@ -211,7 +211,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
           <!-- 投喂按钮 -->
           <div class="card-footer">
-            <button class="feed-btn" @click.stop="feedAgent(agent.role)" :title="'投喂' + getFoodName(agent.role)">
+            <button class="feed-btn" @click.stop="feedAgent(agent.role)" :title="t('agentsExt.feed') + ' ' + getFoodName(agent.role)">
               {{ getFoodEmoji(agent.role) }} {{ feedCount[agent.role] || 0 }}
             </button>
           </div>
@@ -221,7 +221,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
     <!-- 按需 Agent -->
     <div class="agent-section" v-if="onDemand.length > 0">
-      <div class="section-title">⚡ 按需猫咪</div>
+      <div class="section-title">⚡ {{ t("agentsExt.section_onDemand") }}</div>
       <div class="agent-grid" :style="{ '--cols': gridCols }">
         <div
           v-for="agent in onDemand"
@@ -252,7 +252,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
             </div>
           </div>
           <div class="card-footer">
-            <button class="feed-btn" @click.stop="feedAgent(agent.role)" :title="'投喂' + getFoodName(agent.role)">
+            <button class="feed-btn" @click.stop="feedAgent(agent.role)" :title="t('agentsExt.feed') + ' ' + getFoodName(agent.role)">
               {{ getFoodEmoji(agent.role) }} {{ feedCount[agent.role] || 0 }}
             </button>
           </div>
@@ -262,7 +262,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
     <!-- 吉祥物 -->
     <div class="agent-section" v-if="decorative.length > 0">
-      <div class="section-title">🎋 吉祥物</div>
+      <div class="section-title">🎋 {{ t("agentsExt.section_mascot") }}</div>
       <div class="agent-grid mascot-grid" :style="{ '--cols': Math.min(gridCols, 3) }">
         <div
           v-for="agent in decorative"

@@ -24,14 +24,14 @@ async function fetchData() {
   } catch {
     // Mock
     tasks.value = [
-      { id: '1', title: '实现用户登录', description: 'JWT', status: 'active', assigned_to: 'core_dev', depends_on: [], created_at: '', updated_at: '', artifacts: [] },
-      { id: '2', title: '看板优化', description: 'UI', status: 'done', assigned_to: 'frontend', depends_on: [], created_at: '', updated_at: '', artifacts: [] },
-      { id: '3', title: 'API 文档', description: 'Docs', status: 'pending', assigned_to: null, depends_on: [], created_at: '', updated_at: '', artifacts: [] },
+      { id: '1', title: t('dashboard.task_login'), description: t('dashboard.task_login_desc'), status: 'active', assigned_to: 'core_dev', depends_on: [], created_at: '', updated_at: '', artifacts: [] },
+      { id: '2', title: t('dashboard.task_kanban'), description: t('dashboard.task_kanban_desc'), status: 'done', assigned_to: 'frontend', depends_on: [], created_at: '', updated_at: '', artifacts: [] },
+      { id: '3', title: t('dashboard.task_docs'), description: t('dashboard.task_docs_desc'), status: 'pending', assigned_to: null, depends_on: [], created_at: '', updated_at: '', artifacts: [] },
     ] as Task[]
     agents.value = [
-      { role: 'pm', name: '暹罗猫', emoji: '🐱', status: 'active', description: '', mode: 'resident', current_task: '1' },
-      { role: 'core_dev', name: '英短蓝猫', emoji: '🐱', status: 'active', description: '', mode: 'on_demand', current_task: '1' },
-      { role: 'frontend', name: '橘猫', emoji: '🐱', status: 'idle', description: '', mode: 'on_demand', current_task: null },
+      { role: 'pm', name: t('dashboard.agent_pm'), emoji: '🐱', status: 'active', description: '', mode: 'resident', current_task: '1' },
+      { role: 'core_dev', name: t('dashboard.agent_core'), emoji: '🐱', status: 'active', description: '', mode: 'on_demand', current_task: '1' },
+      { role: 'frontend', name: t('dashboard.agent_frontend'), emoji: '🐱', status: 'idle', description: '', mode: 'on_demand', current_task: null },
     ] as Agent[]
     watchdog.value = { healthy: true, checks: { nats: { status: 'ok', latency_ms: 2 }, agents: { status: 'ok', active: 3 }, disk: { status: 'ok', usage_pct: 45 } }, uptime_seconds: 3600 }
   } finally {
@@ -66,7 +66,7 @@ onMounted(fetchData)
         <n-statistic :label="t('dashboard.activeAgents')" :value="activeAgents()" />
       </n-card>
       <n-card class="stat-card">
-        <n-statistic label="✅ 已完成" :value="statusCount('done')" />
+        <n-statistic :label="'✅ ' + t('dashboard.completed')" :value="statusCount('done')" />
       </n-card>
       <n-card class="stat-card">
         <n-statistic :label="t('dashboard.uptime')" :value="watchdog ? (watchdog.uptime_seconds / 3600).toFixed(1) + 'h' : '0h'" />
@@ -76,7 +76,7 @@ onMounted(fetchData)
     <!-- 详情区 — 响应式 2→1 列 -->
     <div class="detail-grid">
       <!-- 任务分布 -->
-      <n-card title="📊 任务状态分布" class="detail-card">
+      <n-card :title="'📊 ' + t('dashboard.totalTasks')" class="detail-card">
         <div v-for="(cfg, status) in STATUS_CONFIG" :key="status" class="status-bar">
           <div class="status-label">
             <span>{{ cfg.emoji }} {{ cfg.label }}</span>
@@ -93,7 +93,7 @@ onMounted(fetchData)
       </n-card>
 
       <!-- 猫咪状态 -->
-      <n-card title="🐱 活跃猫咪" class="detail-card">
+      <n-card :title="'🐱 ' + t('dashboard.activeAgents')" class="detail-card">
         <div class="agent-mini-list">
           <div v-for="agent in agents.slice(0, 6)" :key="agent.role" class="agent-mini">
             <CatAvatarSVG :role="agent.role" :status="agent.status" :size="40" />
@@ -109,14 +109,14 @@ onMounted(fetchData)
     </div>
 
     <!-- Watchdog -->
-    <n-card v-if="watchdog" title="🦉 系统健康" class="watchdog-card">
+    <n-card v-if="watchdog" :title="'🦉 ' + t('common.status')" class="watchdog-card">
       <n-space align="center" justify="space-between">
         <n-tag :type="watchdog.healthy ? 'success' : 'error'" round size="large">
-          {{ watchdog.healthy ? '✅ 健康' : '❌ 异常' }}
+          {{ watchdog.healthy ? '✅ ' + t('common.active') : '❌ ' + t('common.error') }}
         </n-tag>
         <n-space>
           <n-tag size="small">NATS: {{ watchdog.checks.nats.latency_ms }}ms</n-tag>
-          <n-tag size="small">磁盘: {{ watchdog.checks.disk.usage_pct }}%</n-tag>
+          <n-tag size="small">Disk: {{ watchdog.checks.disk.usage_pct }}%</n-tag>
         </n-space>
       </n-space>
     </n-card>

@@ -6,14 +6,17 @@
         <p class="egg-message">{{ activeEgg.message }}</p>
       </div>
       <template #footer>
-        <n-button @click="dismissEgg">知道了 🐱</n-button>
+        <n-button @click="dismissEgg">{{ t('easterEgg.dismiss') }}</n-button>
       </template>
     </n-modal>
   </div>
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { ref, watch } from 'vue'
+const { t } = useI18n()
+
 
 interface EasterEgg {
   id: string
@@ -34,57 +37,57 @@ const eggs: EasterEgg[] = [
   {
     id: 'tiger',
     emoji: '🐯',
-    title: '猫咪觉醒了老虎之力！',
-    message: '连续完成 10 个任务无失败 — 全速前进！Agent 临时加速',
+    title: t('easterEgg.tiger_title'),
+    message: t('easterEgg.tiger_msg'),
     trigger: 'streak_10',
   },
   {
     id: 'legendary_cat',
     emoji: '🐱⬛',
-    title: '传奇奶牛猫现身了！🐱⬛',
-    message: '抓到第 100 个 bug — 传说中这只猫曾一爪打掉过老鼠的耳朵，鼠辈闻风丧胆',
+    title: t('easterEgg.cow_title'),
+    message: t('easterEgg.cow_msg'),
     trigger: 'bugs_100',
   },
   {
     id: 'rat_king',
     emoji: '🐭👑',
-    title: '老鼠国王现身了...',
-    message: '出现架构级 bug（恶龙）— 这需要全员出动',
+    title: t('easterEgg.mouseKing_title'),
+    message: t('easterEgg.mouseKing_msg'),
     trigger: 'dragon_bug',
   },
   {
     id: 'vampire_bat',
     emoji: '🦇',
-    title: '这只蝙蝠怎么打不死？！',
-    message: '同一个 bug 复发 3 次 — 建议换一种思路',
+    title: t('easterEgg.bat_title'),
+    message: 'Same bug 3 times — try a different approach',
     trigger: 'recurring_bug',
   },
   {
     id: 'cat_loaf',
     emoji: '🐱🍞',
-    title: '全体猫咪进入了 loaf 模式！',
-    message: '所有 agent 空闲超过 5 分钟 — 全员猫咪蜷缩动画',
+    title: 'All cats entered loaf mode!',
+    message: 'All agents idle 5+ min — everyone curled up',
     trigger: 'all_idle',
   },
   {
     id: 'nine_lives',
     emoji: '🐱🐈‍⬛',
-    title: '九条命用完了！',
-    message: 'Agent 被 watchdog 重启恰好 9 次 — 这是最后一次机会',
+    title: 'Nine lives used up!',
+    message: 'Agent restarted 9 times by watchdog — last chance',
     trigger: 'restart_9',
   },
   {
     id: 'panda',
     emoji: '🐼',
-    title: '大熊猫来庆祝了！🎉🎋',
-    message: '项目整体进度达到 100% — 全屏熊猫动画',
+    title: 'Panda celebration! 🎉🎋',
+    message: 'Project 100% complete — full-screen panda!',
     trigger: 'complete',
   },
   {
     id: 'magic_cat',
     emoji: '🐱🎩',
-    title: '✨ 变个魔术...',
-    message: '魔术猫出现 — 随机有趣的动画效果',
+    title: '✨ A little magic...',
+    message: 'Magic cat — random fun animation!',
     trigger: 'magic',
   },
 ]
