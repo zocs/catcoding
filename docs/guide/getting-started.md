@@ -93,7 +93,8 @@ watchdog:
 
 ## Next Steps
 
-- [Architecture Overview](../README.md#architecture)
+- [Architecture Overview](https://github.com/zocs/catcoding#-architecture)
 - [Agent Roles](https://github.com/zocs/catcoding#-agent-team)
-- [Dashboard Guide](../dashboard/README.md)
-- [Configuration Reference](../agent.yaml.example)
+- [Configuration Reference](configuration.md)
+- [Dashboard Guide](https://demo.catcoding.org)
+- [中文快速开始](getting-started-zh.md)
