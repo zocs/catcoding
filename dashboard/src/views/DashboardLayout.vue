@@ -43,7 +43,7 @@ import {
   BarChartOutline,
   TerminalOutline,
   CodeSlashOutline,
-  PawOutline
+  GridOutline
 } from '@vicons/ionicons5'
 
 const router = useRouter()
@@ -62,7 +62,7 @@ const menuOptions = computed<MenuOption[]>(() => [
   { label: t('nav.gantt'), key: 'gantt', icon: renderIcon(BarChartOutline) },
   { label: t('nav.terminal'), key: 'terminal', icon: renderIcon(TerminalOutline) },
   { label: t('nav.commands'), key: 'commands', icon: renderIcon(CodeSlashOutline) },
-  { label: t('nav.cat'), key: 'cat', icon: renderIcon(PawOutline) },
+  { label: t('nav.board'), key: 'board', icon: renderIcon(GridOutline) },
 ])
 
 const activeKey = computed(() => {

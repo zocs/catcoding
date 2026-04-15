@@ -37,9 +37,9 @@ const router = createRouter({
           component: () => import('../views/Command.vue')
         },
         {
-          path: 'cat',
-          name: 'cat',
-          component: () => import('../views/AgentCat.vue')
+          path: 'board',
+          name: 'board',
+          component: () => import('../views/Board.vue')
         }
       ]
     }
