@@ -8,6 +8,7 @@ const messages = {
       gantt: 'Gantt',
       terminal: 'Terminal',
       commands: 'Commands',
+      logs: 'Logs',
       cat: 'Cat',
       dashboard: 'Dashboard',
       board: 'Board',
@@ -85,6 +86,14 @@ const messages = {
       busy: 'Busy',
       error: 'Error',
     },
+    logs: {
+      title: 'Daemon Logs',
+      refresh: 'Refresh',
+      auto: 'Auto',
+      filterLevel: 'Level',
+      noLogs: 'No logs yet',
+      entries: 'entries',
+    },
   },
   zh: {
     nav: {
@@ -93,6 +102,7 @@ const messages = {
       gantt: '甘特图',
       terminal: '终端',
       commands: '指令中心',
+      logs: '日志',
       cat: '猫咪',
       dashboard: '总览',
       board: '看板',
@@ -168,6 +178,14 @@ const messages = {
       idle: '休息中',
       busy: '繁忙',
       error: '出错了',
+    },
+    logs: {
+      title: 'Daemon 日志',
+      refresh: '刷新',
+      auto: '自动',
+      filterLevel: '级别',
+      noLogs: '暂无日志',
+      entries: '条',
     },
   },
 }

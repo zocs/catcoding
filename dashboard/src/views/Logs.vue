@@ -1,207 +1,216 @@
 <template>
-  <div class="logs">
-    <n-page-header title="🍳 厨房日志" subtitle="实时 Bug 处理流程">
-      <template #extra>
-        <n-button @click="clearLogs">
-          <template #icon><span>🧹</span></template>
-          清空
+  <div class="logs-page">
+    <div class="logs-header">
+      <h2>📜 {{ t('logs.title') }}</h2>
+      <div class="logs-controls">
+        <n-button size="small" @click="fetchLogs" :loading="loading">
+          🔄 {{ t('logs.refresh') }}
         </n-button>
-        <n-button type="primary" @click="toggleAutoScroll">
-          <template #icon><span>{{ autoScroll ? '⏸️' : '▶️' }}</span></template>
-          {{ autoScroll ? '暂停' : '自动滚动' }}
-        </n-button>
-      </template>
-    </n-page-header>
-
-    <n-card style="margin-top: 24px">
-      <div class="log-container" ref="logContainer">
-        <div v-for="(log, index) in logs" :key="index" class="log-entry" :class="log.level">
-          <span class="log-time">{{ log.time }}</span>
-          <span class="log-level">{{ getLevelEmoji(log.level) }}</span>
-          <span class="log-source">{{ log.source }}</span>
-          <span class="log-message">{{ log.message }}</span>
-        </div>
-        <div v-if="logs.length === 0" class="empty-logs">
-          <n-empty description="暂无日志，等待猫咪团队开工..." />
-        </div>
+        <n-switch v-model:value="autoRefresh" size="small">
+          <template #checked>{{ t('logs.auto') }}</template>
+          <template #unchecked>{{ t('logs.auto') }}</template>
+        </n-switch>
+        <n-select
+          v-model:value="levelFilter"
+          :options="levelOptions"
+          size="small"
+          style="width: 120px"
+          :placeholder="t('logs.filterLevel')"
+        />
       </div>
-    </n-card>
+    </div>
 
-    <!-- Bug 处理统计 -->
-    <div class="bug-stats">
-      <n-card title="🐭 老鼠统计">
-        <n-space>
-          <n-statistic label="小老鼠 🐭" :value="bugStats.mouse" />
-          <n-statistic label="大老鼠 🐀" :value="bugStats.rat" />
-          <n-statistic label="蝙蝠 🦇" :value="bugStats.bat" />
-          <n-statistic label="恶龙 🐉" :value="bugStats.dragon" />
-        </n-space>
-      </n-card>
+    <div class="logs-body" ref="logsContainer">
+      <div v-if="filteredLogs.length === 0" class="logs-empty">
+        📭 {{ t('logs.noLogs') }}
+      </div>
+      <div
+        v-for="(log, i) in filteredLogs"
+        :key="i"
+        class="log-entry"
+        :class="'log-' + log.level.toLowerCase()"
+      >
+        <span class="log-time">{{ formatTime(log.timestamp) }}</span>
+        <span class="log-level" :class="'level-' + log.level.toLowerCase()">{{ log.level }}</span>
+        <span class="log-target">{{ log.target }}</span>
+        <span class="log-msg">{{ cleanMsg(log.message) }}</span>
+      </div>
+    </div>
+
+    <div class="logs-footer">
+      {{ filteredLogs.length }} / {{ logs.length }} {{ t('logs.entries') }}
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
+import { NButton, NSwitch, NSelect } from 'naive-ui'
+
+const { t } = useI18n()
 
 interface LogEntry {
-  time: string
+  timestamp: string
   level: string
-  source: string
+  target: string
   message: string
 }
 
 const logs = ref<LogEntry[]>([])
-const autoScroll = ref(true)
-const logContainer = ref<HTMLElement | null>(null)
+const loading = ref(false)
+const autoRefresh = ref(true)
+const levelFilter = ref<string | null>(null)
+const logsContainer = ref<HTMLElement | null>(null)
+let refreshTimer: ReturnType<typeof setInterval> | null = null
 
-const bugStats = ref({
-  mouse: 0,
-  rat: 0,
-  bat: 0,
-  dragon: 0,
+const levelOptions = [
+  { label: 'All', value: null },
+  { label: 'ERROR', value: 'ERROR' },
+  { label: 'WARN', value: 'WARN' },
+  { label: 'INFO', value: 'INFO' },
+  { label: 'DEBUG', value: 'DEBUG' },
+]
+
+const filteredLogs = computed(() => {
+  if (!levelFilter.value) return logs.value
+  return logs.value.filter(l => l.level === levelFilter.value)
 })
 
-function getLevelEmoji(level: string) {
-  const emojis: Record<string, string> = {
-    info: 'ℹ️',
-    warn: '⚠️',
-    error: '❌',
-    debug: '🐛',
-    success: '✅',
-  }
-  return emojis[level] || '📝'
-}
-
-function addLog(entry: LogEntry) {
-  logs.value.push(entry)
-  if (logs.value.length > 1000) {
-    logs.value.shift()
-  }
-  if (autoScroll.value) {
-    nextTick(() => {
-      if (logContainer.value) {
-        logContainer.value.scrollTop = logContainer.value.scrollHeight
-      }
-    })
+async function fetchLogs() {
+  loading.value = true
+  try {
+    const resp = await fetch('/api/logs')
+    const data = await resp.json()
+    logs.value = data.logs || []
+    await nextTick()
+    scrollToBottom()
+  } catch (e) {
+    console.error('Failed to fetch logs:', e)
+  } finally {
+    loading.value = false
   }
 }
 
-function clearLogs() {
-  logs.value = []
+function scrollToBottom() {
+  if (logsContainer.value) {
+    logsContainer.value.scrollTop = logsContainer.value.scrollHeight
+  }
 }
 
-function toggleAutoScroll() {
-  autoScroll.value = !autoScroll.value
+function formatTime(ts: string): string {
+  try {
+    const d = new Date(ts)
+    return d.toLocaleTimeString('en-US', { hour12: false })
+  } catch {
+    return ts
+  }
 }
 
-function formatTime() {
-  return new Date().toLocaleTimeString('zh-CN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-  })
+function cleanMsg(msg: string): string {
+  // Remove ANSI escape codes and surrounding quotes from debug output
+  return msg.replace(/\x1b\[[0-9;]*m/g, '').replace(/^"|"$/g, '')
 }
 
-// 模拟日志（实际应从 SSE 接收）
-let logInterval: number | null = null
+watch(autoRefresh, (on) => {
+  if (on) {
+    refreshTimer = setInterval(fetchLogs, 3000)
+  } else if (refreshTimer) {
+    clearInterval(refreshTimer)
+    refreshTimer = null
+  }
+})
 
 onMounted(() => {
-  // 添加示例日志
-  addLog({ time: formatTime(), level: 'info', source: 'Daemon', message: '🐱 CatCoding 启动' })
-  addLog({ time: formatTime(), level: 'success', source: 'NATS', message: '📡 已连接 NATS: nats://127.0.0.1:4222' })
-  addLog({ time: formatTime(), level: 'info', source: 'Watchdog', message: '🦉 猫头鹰已就位' })
-
-  // 模拟日志流
-  logInterval = window.setInterval(() => {
-    const sources = ['PM', 'Dev', 'Reviewer', 'Tester', 'TechScout']
-    const messages = [
-      '📋 分析需求中...',
-      '🔧 实现功能...',
-      '🔍 审查代码...',
-      '🧪 运行测试...',
-      '📚 搜索文档...',
-    ]
-    const levels = ['info', 'debug', 'success', 'warn']
-
-    if (Math.random() > 0.7) {
-      addLog({
-        time: formatTime(),
-        level: levels[Math.floor(Math.random() * levels.length)],
-        source: sources[Math.floor(Math.random() * sources.length)],
-        message: messages[Math.floor(Math.random() * messages.length)],
-      })
-    }
-  }, 3000)
+  fetchLogs()
+  if (autoRefresh.value) {
+    refreshTimer = setInterval(fetchLogs, 3000)
+  }
 })
 
 onUnmounted(() => {
-  if (logInterval) {
-    clearInterval(logInterval)
+  if (refreshTimer) {
+    clearInterval(refreshTimer)
   }
 })
 </script>
 
 <style scoped>
-.logs {
-  padding: 16px;
+.logs-page {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 80px);
 }
-
-.log-container {
-  height: 400px;
-  overflow-y: auto;
-  font-family: 'JetBrains Mono', 'Fira Code', monospace;
-  font-size: 13px;
-  background: #0d0d14;
-  padding: 16px;
-  border-radius: 8px;
+.logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
 }
-
-.log-entry {
+.logs-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.logs-controls {
   display: flex;
   gap: 12px;
-  padding: 4px 0;
-  border-bottom: 1px solid #1a1a2e;
+  align-items: center;
 }
-
-.log-entry.warn {
-  color: #f1c40f;
+.logs-body {
+  flex: 1;
+  overflow-y: auto;
+  background: #1e1e2e;
+  border-radius: 8px;
+  padding: 12px;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 13px;
+  line-height: 1.6;
 }
-
-.log-entry.error {
-  color: #e74c3c;
+.logs-empty {
+  color: #666;
+  text-align: center;
+  padding: 40px;
 }
-
-.log-entry.success {
-  color: #2ecc71;
+.log-entry {
+  display: flex;
+  gap: 8px;
+  padding: 2px 0;
+  border-bottom: 1px solid #2a2a3a;
 }
-
+.log-entry:hover {
+  background: #2a2a3a;
+}
 .log-time {
   color: #666;
-  min-width: 80px;
+  min-width: 70px;
+  flex-shrink: 0;
 }
-
 .log-level {
-  min-width: 24px;
+  min-width: 50px;
+  flex-shrink: 0;
+  font-weight: bold;
 }
-
-.log-source {
-  color: #9b59b6;
-  min-width: 80px;
+.level-error { color: #f38ba8; }
+.level-warn  { color: #fab387; }
+.level-info  { color: #a6e3a1; }
+.level-debug { color: #89b4fa; }
+.level-trace { color: #cba6f7; }
+.log-target {
+  color: #585b70;
+  min-width: 140px;
+  flex-shrink: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.log-message {
-  flex: 1;
+.log-msg {
+  color: #cdd6f4;
+  word-break: break-all;
 }
-
-.empty-logs {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-}
-
-.bug-stats {
-  margin-top: 24px;
+.logs-footer {
+  margin-top: 8px;
+  color: #666;
+  font-size: 12px;
+  text-align: right;
 }
 </style>

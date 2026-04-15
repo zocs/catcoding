@@ -9,6 +9,7 @@ mod api;
 mod cascade;
 mod db;
 mod ipc;
+mod log_buffer;
 mod memory;
 mod rollback;
 mod router;
@@ -131,6 +132,9 @@ async fn main() -> Result<()> {
     tracing::info!("  L4 会话: {} 条", memory_manager.l4.count());
 
     // API 服务器
+    // Log buffer
+    let log_buffer = std::sync::Arc::new(log_buffer::LogBuffer::new(500));
+
     // WebSocket 广播通道
     let (ws_tx, _ws_rx) = broadcast::channel::<String>(100);
 
@@ -142,6 +146,7 @@ async fn main() -> Result<()> {
         watchdog: watchdog.clone(),
         lifecycle_manager: lifecycle_manager.clone(),
         ws_tx: ws_tx.clone(),
+        log_buffer: log_buffer.clone(),
     });
 
     let host = std::env::var("API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());

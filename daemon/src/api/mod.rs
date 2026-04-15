@@ -15,6 +15,7 @@ use tokio::sync::broadcast;
 use crate::adapter::AgentLifecycleManager;
 use crate::cascade::CascadeHandler;
 use crate::rollback::RollbackManager;
+use crate::log_buffer::LogBuffer;
 use crate::scheduler::Scheduler;
 use crate::state::{StateManager, Task, TaskStatus};
 use crate::watchdog::Watchdog;
@@ -31,8 +32,10 @@ pub struct ApiState {
     pub scheduler: Arc<Scheduler>,
     pub watchdog: Arc<Watchdog>,
     pub lifecycle_manager: Arc<tokio::sync::Mutex<AgentLifecycleManager>>,
-    /// WebSocket 广播通道
+    /// WebSocket broadcast channel
     pub ws_tx: broadcast::Sender<String>,
+    /// Log ring buffer
+    pub log_buffer: Arc<LogBuffer>,
 }
 
 /// 命令请求
@@ -46,6 +49,15 @@ struct CommandRequest {
 async fn watchdog_status(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
     let summary = state.watchdog.status_summary().await;
     Json(summary)
+}
+
+/// Recent logs
+async fn list_logs(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
+    let entries = state.log_buffer.get_recent(200);
+    Json(json!({
+        "logs": entries,
+        "total": state.log_buffer.count(),
+    }))
 }
 
 /// 创建任务请求
@@ -69,6 +81,7 @@ pub fn create_router(state: Arc<ApiState>) -> Router {
         .route("/api/tasks/{id}/status", post(update_task_status))
         .route("/api/command", post(execute_command))
         .route("/api/watchdog", get(watchdog_status))
+        .route("/api/logs", get(list_logs))
         .route("/ws", get(ws_handler))
         .route("/dashboard", get(dashboard_index))
         .route("/dashboard/{*path}", get(dashboard_handler))
