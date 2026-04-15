@@ -167,7 +167,19 @@ export const KANBAN_COLUMNS = [
 // ━━━ API 客户端 ━━━
 
 export class CatCodingApi {
-  constructor(private baseUrl: string = 'http://localhost:9800') {}
+  // 自动检测：如果在 daemon 嵌入的 dashboard 内，用当前 origin；否则用配置的地址
+  private baseUrl: string
+
+  constructor(baseUrl?: string) {
+    if (baseUrl) {
+      this.baseUrl = baseUrl
+    } else if (typeof window !== 'undefined' && window.location) {
+      // 在浏览器中 — 用当前 origin（daemon 嵌入 dashboard 时）
+      this.baseUrl = window.location.origin
+    } else {
+      this.baseUrl = 'http://127.0.0.1:19800'
+    }
+  }
 
   async health(): Promise<HealthStatus> {
     return fetch(`${this.baseUrl}/api/health`).then(r => r.json())
