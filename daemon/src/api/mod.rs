@@ -85,6 +85,7 @@ pub fn create_router(state: Arc<ApiState>) -> Router {
         .route("/ws", get(ws_handler))
         .route("/dashboard", get(dashboard_index))
         .route("/dashboard/{*path}", get(dashboard_handler))
+        .route("/assets/{*path}", get(dashboard_handler))
         .with_state(state)
 }
 

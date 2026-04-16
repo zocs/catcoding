@@ -7,7 +7,7 @@ const input = ref('')
 const lines = ref<{ text: string; type: 'cmd' | 'output' | 'error' | 'cat' }[]>([])
 
 const catResponses: Record<string, string> = {
-  'cat --help': `🐱 CatCoding CLI v0.1.0
+  'catcoding --help': `🐱 CatCoding CLI v0.1.0
 Usage: catcoding <command> [options]
 
 Commands:
@@ -81,9 +81,9 @@ function execute() {
   } else if (cmd === 'clear') {
     lines.value = []
   } else if (cmd.startsWith('catcoding ')) {
-    lines.value.push({ text: `🐱 *tilts head* Unknown command: "${cmd}". Try "cat --help"`, type: 'cat' })
+    lines.value.push({ text: `🐱 *tilts head* Unknown command: "${cmd}". Try "catcoding --help"`, type: 'cat' })
   } else {
-    lines.value.push({ text: `bash: ${cmd}: command not found. Try "cat --help" for CatCoding commands.`, type: 'error' })
+    lines.value.push({ text: `bash: ${cmd}: command not found. Try "catcoding --help" for CatCoding commands.`, type: 'error' })
   }
 
   nextTick(() => {
@@ -96,7 +96,7 @@ function execute() {
 onMounted(() => {
   lines.value.push(
     { text: '🐱 Welcome to CatCoding Terminal!', type: 'cat' },
-    { text: 'Type "cat --help" to see available commands.', type: 'output' },
+    { text: 'Type "catcoding --help" to see available commands.', type: 'output' },
     { text: 'Try: catcoding status | catcoding mice | catcoding feed | neofetch', type: 'output' },
     { text: '', type: 'output' }
   )
@@ -126,7 +126,7 @@ onMounted(() => {
     </div>
     <template #footer>
       <div class="quick-commands">
-        <n-button size="small" @click="input = 'cat --help'; execute()">cat --help</n-button>
+        <n-button size="small" @click="input = 'catcoding --help'; execute()">catcoding --help</n-button>
         <n-button size="small" @click="input = 'catcoding status'; execute()">status</n-button>
         <n-button size="small" @click="input = 'catcoding mice'; execute()">mice</n-button>
         <n-button size="small" @click="input = 'catcoding feed'; execute()">feed 🐟</n-button>

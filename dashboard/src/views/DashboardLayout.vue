@@ -65,11 +65,7 @@
         class="dashboard-content"
         :style="isMobile ? { paddingTop: '0' } : {}"
       >
-        <router-view v-slot="{ Component }">
-          <keep-alive>
-            <component :is="Component" />
-          </keep-alive>
-        </router-view>
+        <router-view />
       </n-layout-content>
     </n-layout>
   </n-layout>
