@@ -19,6 +19,10 @@ Thumbs.db
 *.db
 *.db-journal
 
+# Internal progress/review notes — local only, not for GitHub
+PROGRESS.md
+REVIEWS.md
+
 # NATS
 /tmp/nats/
 
