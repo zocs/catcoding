@@ -93,22 +93,27 @@ impl L2Facts {
         None
     }
 
-    /// 插入事实
+    /// 插入事实（去重：如果 key 已存在则更新）
     pub fn insert(&mut self, key: &str, value: &str) -> Result<()> {
         let section = "GENERAL";
-        self.sections
-            .entry(section.to_string())
-            .or_default()
-            .push((key.to_string(), value.to_string()));
+        let entries = self.sections.entry(section.to_string()).or_default();
+        // 查找已存在的 key 并更新
+        if let Some(entry) = entries.iter_mut().find(|(k, _)| k == key) {
+            entry.1 = value.to_string();
+        } else {
+            entries.push((key.to_string(), value.to_string()));
+        }
         self.save()
     }
 
-    /// 按分区插入
+    /// 按分区插入（去重：如果 key 已存在则更新）
     pub fn insert_to_section(&mut self, section: &str, key: &str, value: &str) -> Result<()> {
-        self.sections
-            .entry(section.to_string())
-            .or_default()
-            .push((key.to_string(), value.to_string()));
+        let entries = self.sections.entry(section.to_string()).or_default();
+        if let Some(entry) = entries.iter_mut().find(|(k, _)| k == key) {
+            entry.1 = value.to_string();
+        } else {
+            entries.push((key.to_string(), value.to_string()));
+        }
         self.save()
     }
 

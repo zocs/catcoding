@@ -230,18 +230,31 @@ impl RollbackManager {
     /// 清理旧检查点
     pub async fn cleanup_old_checkpoints(&self, keep_days: u32) -> Result<usize> {
         let now = Utc::now();
-        let mut cleaned = 0;
+        let mut to_remove = Vec::new();
 
-        let checkpoints = self.checkpoints.read().await;
-        for (id, checkpoint) in checkpoints.iter() {
-            let age_days = (now - checkpoint.created_at).num_days();
-            if age_days > keep_days as i64 {
-                let path = format!("{}/{}.json", self.checkpoint_dir, id);
-                if Path::new(&path).exists() {
-                    std::fs::remove_file(&path)?;
-                    cleaned += 1;
+        {
+            let checkpoints = self.checkpoints.read().await;
+            for (id, checkpoint) in checkpoints.iter() {
+                let age_days = (now - checkpoint.created_at).num_days();
+                if age_days > keep_days as i64 {
+                    to_remove.push(id.clone());
                 }
             }
+        }
+
+        if to_remove.is_empty() {
+            return Ok(0);
+        }
+
+        let mut cleaned = 0;
+        let mut checkpoints = self.checkpoints.write().await;
+        for id in &to_remove {
+            let path = format!("{}/{}.json", self.checkpoint_dir, id);
+            if Path::new(&path).exists() {
+                std::fs::remove_file(&path)?;
+                cleaned += 1;
+            }
+            checkpoints.remove(id);
         }
 
         if cleaned > 0 {

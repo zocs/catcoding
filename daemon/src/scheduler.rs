@@ -261,8 +261,11 @@ impl Scheduler {
                         tracing::info!("Dispatching task [{}] → {}", task.title, agent_id);
 
                         // 通过生命周期管理器实际发送任务给 Agent
-                        let lm = self.lifecycle_manager.lock().await;
-                        match lm.send_task(&agent_id, &task.description).await {
+                        let send_result = {
+                            let lm = self.lifecycle_manager.lock().await;
+                            lm.send_task(&agent_id, &task.description).await
+                        };
+                        match send_result {
                             Ok(()) => {
                                 tracing::info!("Task sent to Agent {}", agent_id);
                                 // 更新任务状态为 active

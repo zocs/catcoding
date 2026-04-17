@@ -209,7 +209,7 @@ impl CascadeHandler {
             }
         }
 
-        let requires_replan = blocked.len() > 3 || !blocked.is_empty();
+        let requires_replan = !blocked.is_empty();
 
         CascadeImpact {
             failed_task: task_id.to_string(),

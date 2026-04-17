@@ -66,7 +66,8 @@ async fn main() -> Result<()> {
 
     // Watchdog
     let watchdog_config = WatchdogConfig::default();
-    let watchdog = Arc::new(Watchdog::new(watchdog_config.clone()));
+    let (watchdog, _restart_rx) = Watchdog::new(watchdog_config.clone());
+    let watchdog = Arc::new(watchdog);
     tracing::info!(
         "Watchdog started - heartbeat: {}s, timeout: {}s",
         watchdog_config.heartbeat_interval,

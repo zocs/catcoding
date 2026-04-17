@@ -248,13 +248,20 @@ impl AgentAdapter for HermesAdapter {
         match running.get(&handle.agent_id) {
             Some(_agent) => {
                 // 检查进程是否还活着
-                let proc_path = format!("/proc/{}", handle.pid.unwrap_or(0));
-                if std::path::Path::new(&proc_path).exists() {
-                    Ok(HealthStatus::Healthy)
-                } else {
-                    Ok(HealthStatus::Unhealthy {
-                        reason: format!("Process {} not found", handle.pid.unwrap_or(0)),
-                    })
+                match handle.pid {
+                    Some(pid) => {
+                        let proc_path = format!("/proc/{}", pid);
+                        if std::path::Path::new(&proc_path).exists() {
+                            Ok(HealthStatus::Healthy)
+                        } else {
+                            Ok(HealthStatus::Unhealthy {
+                                reason: format!("Process {} not found", pid),
+                            })
+                        }
+                    }
+                    None => Ok(HealthStatus::Unhealthy {
+                        reason: "No PID info available".to_string(),
+                    }),
                 }
             }
             None => Ok(HealthStatus::Unhealthy {

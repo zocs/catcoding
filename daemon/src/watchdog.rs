@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::sync::{mpsc, RwLock};
 
 /// Watchdog 配置
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -102,14 +102,18 @@ pub struct ProcessInfo {
 pub struct Watchdog {
     config: WatchdogConfig,
     agents: Arc<RwLock<HashMap<String, AgentMonitor>>>,
+    restart_tx: mpsc::UnboundedSender<String>,
 }
 
 impl Watchdog {
-    pub fn new(config: WatchdogConfig) -> Self {
-        Self {
+    pub fn new(config: WatchdogConfig) -> (Self, mpsc::UnboundedReceiver<String>) {
+        let (restart_tx, restart_rx) = mpsc::unbounded_channel();
+        let watchdog = Self {
             config,
             agents: Arc::new(RwLock::new(HashMap::new())),
-        }
+            restart_tx,
+        };
+        (watchdog, restart_rx)
     }
 
     /// 注册要监控的 Agent
@@ -304,6 +308,10 @@ impl Watchdog {
                     m.restart_count = restart_count;
                     m.last_heartbeat = Utc::now();
                     m.pid = None;
+                }
+                // 通知调用方重启 Agent
+                if let Err(e) = self.restart_tx.send(agent_id.to_string()) {
+                    tracing::error!("Failed to send restart notification: {}", e);
                 }
                 Ok(format!("Restarted (attempt {})", restart_count))
             }

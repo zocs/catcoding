@@ -182,11 +182,17 @@ impl StateManager {
         }
     }
 
-    /// 添加任务（内存 + SQLite）
+    /// 添加任务（先写 SQLite，成功后更新内存）
     pub async fn add_task(&self, project_id: &str, task: Task) -> Result<()> {
         self.ensure_project(project_id).await;
 
-        // 写入内存
+        // 先写入 SQLite
+        if let Some(db) = &self.db {
+            db.insert_task(project_id, &task).await?;
+            tracing::debug!("Task {} persisted to SQLite", task.id);
+        }
+
+        // SQLite 成功后更新内存
         {
             let mut projects = self.projects.write().await;
             if let Some(project) = projects.get_mut(project_id) {
@@ -194,23 +200,23 @@ impl StateManager {
             }
         }
 
-        // 写入 SQLite
-        if let Some(db) = &self.db {
-            db.insert_task(project_id, &task).await?;
-            tracing::debug!("Task {} persisted to SQLite", task.id);
-        }
-
         Ok(())
     }
 
-    /// 更新任务状态
+    /// 更新任务状态（先写 SQLite，成功后更新内存）
     pub async fn update_task_status(
         &self,
         project_id: &str,
         task_id: &str,
         status: TaskStatus,
     ) -> Result<()> {
-        // 更新内存
+        // 先更新 SQLite
+        if let Some(db) = &self.db {
+            db.update_task_status(project_id, task_id, status.as_str())
+                .await?;
+        }
+
+        // SQLite 成功后更新内存
         {
             let mut projects = self.projects.write().await;
             if let Some(project) = projects.get_mut(project_id) {
@@ -219,12 +225,6 @@ impl StateManager {
                     task.updated_at = Utc::now();
                 }
             }
-        }
-
-        // 更新 SQLite
-        if let Some(db) = &self.db {
-            db.update_task_status(project_id, task_id, status.as_str())
-                .await?;
         }
 
         Ok(())

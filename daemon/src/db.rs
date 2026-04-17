@@ -114,13 +114,20 @@ impl Database {
                 params![task_id, project_id],
                 |row| row.get(0),
             )
-            .unwrap_or_default();
+            .map_err(|e| anyhow::anyhow!("Task {}/{} not found: {}", project_id, task_id, e))?;
 
         // 更新状态
-        conn.execute(
+        let rows = conn.execute(
             "UPDATE tasks SET status = ?1, updated_at = ?2 WHERE id = ?3 AND project_id = ?4",
             params![status, Utc::now().to_rfc3339(), task_id, project_id],
         )?;
+        if rows == 0 {
+            return Err(anyhow::anyhow!(
+                "UPDATE affected 0 rows for task {}/{}",
+                project_id,
+                task_id
+            ));
+        }
 
         // 记录历史
         conn.execute(

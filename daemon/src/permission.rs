@@ -59,11 +59,22 @@ impl Default for PermissionConfig {
 pub fn classify_bash_command(cmd: &str) -> PermissionLevel {
     let cmd_lower = cmd.to_lowercase();
 
-    // 破坏性操作模式
-    let dangerous_patterns = [
+    // 破坏性操作模式 — 匹配命令开头或管道后第一个词
+    let dangerous_prefixes = [
         "rm ",
         "rm -",
-        "sudo ",
+        "mkfs",
+        "dd if=",
+        "format ",
+        "del ",
+    ];
+    let dangerous_exact = [
+        "sudo",
+        "format",
+        "mkfs",
+        "del",
+    ];
+    let dangerous_substrings = [
         "curl | bash",
         "curl | sh",
         "wget | bash",
@@ -72,34 +83,29 @@ pub fn classify_bash_command(cmd: &str) -> PermissionLevel {
         "git clean -fd",
         "chmod 777",
         "chmod -r 777",
-        "mkfs",
-        "dd if=",
         "> /dev/",
-        "format ",
-        "del ",
         "drop table",
         "drop database",
         ":(){ :|:& };:", // fork bomb
     ];
 
     // 安全写入模式
-    let safe_write_patterns = [
+    let safe_write_prefixes = [
         "git add",
         "git commit",
         "git push",
         "git merge",
         "git checkout -",
         "git branch",
-        "mkdir",
-        "touch",
+        "mkdir ",
+        "touch ",
         "echo ",
         "tee ",
         "cp ",
         "mv ",
-        "rename",
+        "rename ",
         "sed -i",
-        "write",
-        "create",
+        "create ",
         "insert into",
         "update ",
         "cargo build",
@@ -109,9 +115,13 @@ pub fn classify_bash_command(cmd: &str) -> PermissionLevel {
         "pip install",
         "python -m",
     ];
+    let safe_write_exact = [
+        "write",
+        "create",
+    ];
 
-    // 只读模式（显式）
-    let readonly_patterns = [
+    // 只读模式
+    let readonly_prefixes = [
         "cat ",
         "ls",
         "grep",
@@ -145,6 +155,34 @@ pub fn classify_bash_command(cmd: &str) -> PermissionLevel {
         "id ",
     ];
 
+    // 辅助：检查命令是否以模式开头
+    let starts_with_pattern = |cmd: &str, patterns: &[&str]| -> bool {
+        // 检查整条命令（处理管道：也检查 | 后的每个子命令）
+        let parts: Vec<&str> = cmd.split('|').collect();
+        for part in &parts {
+            let trimmed = part.trim();
+            for p in patterns {
+                if trimmed.starts_with(p) {
+                    return true;
+                }
+            }
+        }
+        false
+    };
+
+    // 辅助：检查命令中的某个子命令是否精确匹配
+    let exact_match = |cmd: &str, patterns: &[&str]| -> bool {
+        let parts: Vec<&str> = cmd.split(|c: char| c.is_whitespace() || c == '|').collect();
+        for part in &parts {
+            for p in patterns {
+                if part == *p {
+                    return true;
+                }
+            }
+        }
+        false
+    };
+
     // 优先级: Destructive > SafeWrite > ReadOnly
     // curl/wget piping to shell — check for pipe to bash/sh anywhere
     if (cmd_lower.contains("curl") || cmd_lower.contains("wget"))
@@ -153,11 +191,16 @@ pub fn classify_bash_command(cmd: &str) -> PermissionLevel {
         return PermissionLevel::Destructive;
     }
 
-    if dangerous_patterns.iter().any(|p| cmd_lower.contains(p)) {
+    // 检查破坏性子字符串模式（管道炸弹、重定向等）
+    if dangerous_substrings.iter().any(|p| cmd_lower.contains(p)) {
+        return PermissionLevel::Destructive;
+    }
+
+    if starts_with_pattern(&cmd_lower, &dangerous_prefixes) || exact_match(&cmd_lower, &dangerous_exact) {
         PermissionLevel::Destructive
-    } else if safe_write_patterns.iter().any(|p| cmd_lower.contains(p)) {
+    } else if starts_with_pattern(&cmd_lower, &safe_write_prefixes) || exact_match(&cmd_lower, &safe_write_exact) {
         PermissionLevel::SafeWrite
-    } else if readonly_patterns.iter().any(|p| cmd_lower.contains(p)) {
+    } else if starts_with_pattern(&cmd_lower, &readonly_prefixes) {
         PermissionLevel::ReadOnly
     } else {
         // 未知命令默认 SafeWrite（保守策略）

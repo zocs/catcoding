@@ -416,6 +416,9 @@ fn cmd_serve(port: u16, foreground: bool) -> Result<()> {
         let status = cmd.status()?;
         std::process::exit(status.code().unwrap_or(1));
     } else {
+        cmd.stdin(std::process::Stdio::null())
+           .stdout(std::process::Stdio::null())
+           .stderr(std::process::Stdio::null());
         let child = cmd.spawn()?;
         println!("✅ Daemon started (PID: {})", child.id());
         println!("🌐 Dashboard: http://localhost:{}", port);
