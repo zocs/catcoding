@@ -6,10 +6,11 @@ use axum::{
     Json, Router,
 };
 use futures_util::{SinkExt, StreamExt};
-use rust_embed::RustEmbed;
+use rust_embed::{Embed, RustEmbed};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
+use std::time::Instant;
 use tokio::sync::broadcast;
 
 use crate::adapter::AgentLifecycleManager;
@@ -37,6 +38,8 @@ pub struct ApiState {
     pub log_buffer: Arc<LogBuffer>,
     /// L4 Memory system
     pub memory_manager: Arc<MemoryManager>,
+    /// Daemon start time, for `/api/health` uptime.
+    pub started_at: Instant,
 }
 
 /// 命令请求
@@ -123,7 +126,7 @@ async fn health_handler(State(state): State<Arc<ApiState>>) -> impl IntoResponse
         "status": "ok",
         "version": env!("CARGO_PKG_VERSION"),
         "project": state.project_id,
-        "uptime": "TODO"
+        "uptime_secs": state.started_at.elapsed().as_secs(),
     }))
 }
 

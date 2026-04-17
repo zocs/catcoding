@@ -180,7 +180,7 @@ main() {
     echo -e "  1. 进入你的项目目录"
     echo -e "  2. 运行 ${YELLOW}catcoding init${NC} 初始化"
     echo -e "  3. 运行 ${YELLOW}catcoding serve${NC} 启动 Daemon"
-    echo -e "  4. 打开 ${YELLOW}http://localhost:8080/dashboard${NC} 查看 Dashboard"
+    echo -e "  4. 打开 ${YELLOW}http://localhost:19800/dashboard${NC} 查看 Dashboard"
     echo ""
     echo -e "${BLUE}更多信息:${NC}"
     echo -e "  - 文档: https://catcoding.org/docs"
