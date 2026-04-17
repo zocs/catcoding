@@ -2,14 +2,16 @@
 import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { NPageHeader, NSpace, NCard, NTag, NBadge, NButton, NScrollbar, NEmpty, NAvatar, NModal, NInput, NForm, NFormItem, useMessage } from 'naive-ui'
-import { Task, TaskStatus, KANBAN_COLUMNS, STATUS_CONFIG, CatCodingApi, AGENT_ROLES_FIXED } from '@/api/types'
+import { Task, TaskStatus, KANBAN_COLUMNS, STATUS_CONFIG, CatCodingApi } from '@/api/types'
 import CatAvatar from '@/components/CatAvatar.vue'
 import EasterEgg from '@/components/EasterEgg.vue'
 import { useResponsive } from '@/composables/useResponsive'
+import { useAgentRoles, ROLE_META } from '@/composables/useAgentRoles'
 const { t } = useI18n()
 
 
 const { isMobile, kanbanMode } = useResponsive()
+const { getRole, allRoles } = useAgentRoles()
 
 const api = new CatCodingApi()
 const message = useMessage()
@@ -107,7 +109,8 @@ function checkEasterEggs() {
 
 function getAgentForTask(assignedTo: string | null) {
   if (!assignedTo) return null
-  return (AGENT_ROLES_FIXED as any)[assignedTo]
+  if (!(assignedTo in ROLE_META)) return null
+  return getRole(assignedTo)
 }
 
 // 猫爪点击特效
@@ -240,7 +243,7 @@ onMounted(fetchTasks)
         <n-form-item label="Assign to">
           <n-space>
             <n-tag
-              v-for="(info, role) in AGENT_ROLES_FIXED"
+              v-for="(info, role) in allRoles"
               :key="role"
               :type="newTask.role === role ? 'warning' : 'default'"
               checkable
@@ -248,7 +251,7 @@ onMounted(fetchTasks)
               @update:checked="newTask.role = role as string"
               round
             >
-              {{ (info as any).emoji }} {{ (info as any).name }}
+              {{ info.emoji }} {{ info.name }}
             </n-tag>
           </n-space>
         </n-form-item>

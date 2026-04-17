@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { NPageHeader, NCard, NTag, NSpace, NButton, NEmpty, useMessage } from 'naive-ui'
-import { Agent, CatCodingApi, AGENT_ROLES_FIXED } from '@/api/types'
+import { Agent, CatCodingApi } from '@/api/types'
 import CatAvatarSVG from '@/components/CatAvatarSVG.vue'
 import EasterEgg from '@/components/EasterEgg.vue'
 import XpBadge from '@/components/XpBadge.vue'
 import { useI18n } from 'vue-i18n'
 import { useResponsive } from '@/composables/useResponsive'
+import { useAgentRoles, ROLE_META } from '@/composables/useAgentRoles'
 
 const { t } = useI18n()
 const { isMobile, gridCols, avatarSize, cardPadding } = useResponsive()
+const { getRole } = useAgentRoles()
 
 const api = new CatCodingApi()
 const message = useMessage()
@@ -62,15 +64,19 @@ async function fetchAgents() {
   try {
     agents.value = await api.getAgents()
   } catch {
-    agents.value = Object.entries(AGENT_ROLES_FIXED).map(([role, info]) => ({
-      role,
-      name: info.name,
-      emoji: info.emoji,
-      status: ['active', 'active', 'idle', 'idle', 'idle', 'busy', 'idle', 'active', 'active', 'idle'][Math.floor(Math.random() * 10)] as any,
-      description: info.desc,
-      mode: info.mode as any,
-      current_task: Math.random() > 0.6 ? `task-${Math.floor(Math.random() * 100)}` : null,
-    }))
+    // Mock: synthesize one of each role so the page still renders offline.
+    agents.value = Object.keys(ROLE_META).map((role) => {
+      const info = getRole(role)
+      return {
+        role,
+        name: info.name,
+        emoji: info.emoji,
+        status: ['active', 'idle', 'idle', 'busy', 'active'][Math.floor(Math.random() * 5)] as any,
+        description: info.desc,
+        mode: info.mode as any,
+        current_task: Math.random() > 0.6 ? `task-${Math.floor(Math.random() * 100)}` : null,
+      }
+    })
   } finally {
     loading.value = false
   }
@@ -79,14 +85,14 @@ async function fetchAgents() {
 // "投喂"互动
 function feedAgent(role: string) {
   feedCount.value[role] = (feedCount.value[role] || 0) + 1
-  message.success(t('agentsExt.feedSuccess', { name: getAgentInfo(role)?.name, count: feedCount.value[role] }))
+  message.success(t('agentsExt.feedSuccess', { name: getAgentInfo(role).name, count: feedCount.value[role] }))
 
   // 投喂 5 次触发彩蛋
   if (feedCount.value[role] === 5) {
     easterEggRef.value?.triggerEgg('magic')
   }
   // 所有 agent 都被投喂过
-  const allFed = Object.keys(AGENT_ROLES_FIXED).every(r => (feedCount.value[r] || 0) > 0)
+  const allFed = Object.keys(ROLE_META).every(r => (feedCount.value[r] || 0) > 0)
   if (allFed) {
     easterEggRef.value?.triggerEgg('streak_10')
   }
@@ -134,7 +140,7 @@ function interactMascot(role: string) {
 }
 
 function getAgentInfo(role: string) {
-  return (AGENT_ROLES_FIXED as any)[role]
+  return getRole(role)
 }
 
 function getStatusLabel(status: string) {
@@ -195,10 +201,10 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
 
             <div class="agent-info">
               <div class="agent-name-row">
-                <span class="agent-name">{{ agent.name }}</span>
+                <span class="agent-name">{{ getAgentInfo(agent.role).name }}</span>
                 <span class="agent-role-tag">@{{ agent.role }}</span>
               </div>
-              <div class="agent-desc" v-if="!isMobile">{{ agent.description }}</div>
+              <div class="agent-desc" v-if="!isMobile">{{ getAgentInfo(agent.role).desc }}</div>
               <div class="agent-status">
                 <n-tag :type="getStatusType(agent.status)" size="small" round>
                   {{ getStatusLabel(agent.status) }}
@@ -242,7 +248,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
             <CatAvatarSVG :role="agent.role" :status="agent.status" :size="isMobile ? 40 : 64" />
             <div class="agent-info">
               <div class="agent-name-row">
-                <span class="agent-name">{{ agent.name }}</span>
+                <span class="agent-name">{{ getAgentInfo(agent.role).name }}</span>
                 <span class="agent-role-tag">@{{ agent.role }}</span>
               </div>
               <div class="agent-status">
@@ -279,9 +285,9 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
         >
           <div class="mascot-wrapper">
             <CatAvatarSVG :role="agent.role" status="idle" :size="isMobile ? 80 : 120" :animated="true" />
-            <div class="mascot-name">{{ agent.name }}</div>
+            <div class="mascot-name">{{ getAgentInfo(agent.role).name }}</div>
             <div class="agent-role-tag">@{{ agent.role }}</div>
-            <div class="mascot-desc" v-if="!isMobile">{{ agent.description }}</div>
+            <div class="mascot-desc" v-if="!isMobile">{{ getAgentInfo(agent.role).desc }}</div>
           </div>
         </div>
       </div>

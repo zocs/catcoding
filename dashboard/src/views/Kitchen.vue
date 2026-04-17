@@ -15,24 +15,26 @@ const message = useMessage()
 const tasks = ref<Task[]>([])
 const loading = ref(false)
 
+type BugTier = 'small' | 'big' | 'bat' | 'dragon'
+
 async function fetchTasks() {
   loading.value = true
   try {
     tasks.value = await api.getTasks()
   } catch {
     tasks.value = []
-    message.warning('无法连接 daemon，显示空数据')
+    message.warning(t('command.failed'))
   } finally {
     loading.value = false
   }
 }
 
-// Bug 分级：按失败次数 / 描述关键词粗分
-function classifyBug(task: Task): 'small' | 'big' | 'bat' | 'dragon' {
+// Bug 分级：按描述关键词粗分
+function classifyBug(task: Task): BugTier {
   const desc = (task.description || '').toLowerCase()
   const title = (task.title || '').toLowerCase()
   if (desc.includes('arch') || title.includes('refactor') || title.includes('架构')) return 'dragon'
-  if (desc.includes('race') || desc.includes('time') || desc.includes('环境')) return 'bat'
+  if (desc.includes('race') || desc.includes('timing') || desc.includes('环境')) return 'bat'
   if (task.status === 'failed') return 'big'
   return 'small'
 }
@@ -49,48 +51,57 @@ const buckets = computed(() => {
 
 const total = computed(() => Object.values(buckets.value).reduce((s, arr) => s + arr.length, 0))
 
+function tierTitle(tier: BugTier): string {
+  return t(`kitchen.tier_${tier}`)
+}
+function tierChipLabel(tier: BugTier, count: number): string {
+  return `${t(`kitchen.tier_${tier}_label`)} ${count}`
+}
+
 onMounted(fetchTasks)
 </script>
 
 <template>
   <div class="kitchen-page" :class="{ mobile: isMobile }">
-    <n-page-header :title="'🍳 ' + t('kitchen.title', '厨房 — 抓老鼠处理中')"
-                   :subtitle="t('kitchen.subtitle', '失败 / 阻塞 / 回滚的任务按 Bug 等级归类')">
+    <n-page-header :title="'🍳 ' + t('kitchen.title')"
+                   :subtitle="t('kitchen.subtitle')">
       <template #extra>
         <n-button @click="fetchTasks" :loading="loading" round :size="isMobile ? 'small' : 'medium'">
-          🔄 {{ t('gantt.refresh', '刷新') }}
+          🔄 {{ t('gantt.refresh') }}
         </n-button>
       </template>
     </n-page-header>
 
     <n-space align="center" size="small" style="margin: 16px 0">
-      <n-tag :bordered="false" type="info" size="large">共 {{ total }} 只</n-tag>
-      <n-tag :bordered="false" size="medium">🐭 小 {{ buckets.small.length }}</n-tag>
-      <n-tag :bordered="false" size="medium" type="warning">🐀 大 {{ buckets.big.length }}</n-tag>
-      <n-tag :bordered="false" size="medium" type="warning">🦇 蝙蝠 {{ buckets.bat.length }}</n-tag>
-      <n-tag :bordered="false" size="medium" type="error">🐉 恶龙 {{ buckets.dragon.length }}</n-tag>
+      <n-tag :bordered="false" type="info" size="large">{{ t('kitchen.total', { n: total }) }}</n-tag>
+      <n-tag :bordered="false" size="medium">{{ tierChipLabel('small', buckets.small.length) }}</n-tag>
+      <n-tag :bordered="false" size="medium" type="warning">{{ tierChipLabel('big', buckets.big.length) }}</n-tag>
+      <n-tag :bordered="false" size="medium" type="warning">{{ tierChipLabel('bat', buckets.bat.length) }}</n-tag>
+      <n-tag :bordered="false" size="medium" type="error">{{ tierChipLabel('dragon', buckets.dragon.length) }}</n-tag>
     </n-space>
 
     <div v-if="total === 0">
-      <n-empty description="🎉 厨房很干净，没有老鼠！" />
+      <n-empty :description="t('kitchen.empty')" />
     </div>
 
     <div v-else class="bug-sections">
-      <n-card v-for="tier in (['dragon','bat','big','small'] as const)"
-              :key="tier"
-              v-show="buckets[tier].length > 0"
-              :title="({dragon:'🐉 恶龙级 — 架构问题',bat:'🦇 蝙蝠级 — 刁钻问题',big:'🐀 大老鼠 — 顽固 bug',small:'🐭 小老鼠 — 简单 bug'} as any)[tier]"
-              :bordered="false"
-              class="bug-card">
+      <n-card
+        v-for="tier in (['dragon','bat','big','small'] as BugTier[])"
+        :key="tier"
+        v-show="buckets[tier].length > 0"
+        :title="tierTitle(tier)"
+        :bordered="false"
+        class="bug-card"
+      >
         <div class="bug-list">
-          <div v-for="t in buckets[tier]" :key="t.id" class="bug-item">
-            <div class="bug-title">{{ t.title }}</div>
+          <div v-for="task in buckets[tier]" :key="task.id" class="bug-item">
+            <div class="bug-title">{{ task.title }}</div>
             <div class="bug-meta">
-              <span class="bug-id">#{{ t.id.slice(0,8) }}</span>
-              <n-tag size="small" :type="t.status === 'failed' ? 'error' : 'warning'" round>{{ t.status }}</n-tag>
-              <span v-if="t.assigned_to" class="bug-agent">@{{ t.assigned_to }}</span>
+              <span class="bug-id">#{{ task.id.slice(0,8) }}</span>
+              <n-tag size="small" :type="task.status === 'failed' ? 'error' : 'warning'" round>{{ task.status }}</n-tag>
+              <span v-if="task.assigned_to" class="bug-agent">@{{ task.assigned_to }}</span>
             </div>
-            <div class="bug-desc" v-if="t.description">{{ t.description }}</div>
+            <div class="bug-desc" v-if="task.description">{{ task.description }}</div>
           </div>
         </div>
       </n-card>
@@ -99,7 +110,7 @@ onMounted(fetchTasks)
 </template>
 
 <style scoped>
-.kitchen-page { min-height: 100vh; padding: 16px; }
+.kitchen-page { min-height: 100vh; padding: 16px; color: var(--cc-fg); }
 .kitchen-page.mobile { padding: 8px; }
 .bug-sections { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
 .bug-card { border-radius: 16px; }

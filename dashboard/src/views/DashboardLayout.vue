@@ -122,9 +122,9 @@ function renderIcon(icon: any) {
 
 const menuOptions = computed<MenuOption[]>(() => [
   { label: t('nav.agents'), key: 'agents', icon: renderIcon(PeopleOutline) },
-  { label: t('nav.team', '团队'), key: 'team', icon: renderIcon(LayersOutline) },
+  { label: t('nav.team'), key: 'team', icon: renderIcon(LayersOutline) },
   { label: t('nav.board'), key: 'board', icon: renderIcon(GridOutline) },
-  { label: t('nav.kitchen', '厨房'), key: 'kitchen', icon: renderIcon(BugOutline) },
+  { label: t('nav.kitchen'), key: 'kitchen', icon: renderIcon(BugOutline) },
   { label: t('nav.gantt'), key: 'gantt', icon: renderIcon(BarChartOutline) },
   { label: t('nav.memory'), key: 'memory', icon: renderIcon(HardwareChipOutline) },
   { label: t('nav.commands'), key: 'commands', icon: renderIcon(CodeSlashOutline) },
