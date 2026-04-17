@@ -458,3 +458,69 @@ impl Watchdog {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_watchdog_config_defaults() {
+        let cfg = WatchdogConfig::default();
+        assert_eq!(cfg.heartbeat_interval, 5);
+        assert_eq!(cfg.heartbeat_timeout, 15);
+        assert_eq!(cfg.task_timeout_default, 600);
+        assert_eq!(cfg.task_timeout_coding, 1200);
+        assert_eq!(cfg.task_timeout_review, 300);
+        assert_eq!(cfg.max_memory_mb, 2048);
+        assert_eq!(cfg.max_cpu_percent, 80);
+        assert_eq!(cfg.max_restart, 3);
+    }
+
+    #[test]
+    fn test_check_proc_nonexistent_pid() {
+        // PID 不存在时应返回 alive=false
+        let info = Watchdog::check_proc(u32::MAX);
+        assert!(!info.alive);
+        assert_eq!(info.memory_kb, 0);
+    }
+
+    #[test]
+    fn test_check_proc_self() {
+        // 自身进程必然存在
+        let pid = std::process::id();
+        let info = Watchdog::check_proc(pid);
+        assert!(info.alive);
+        assert_eq!(info.pid, pid);
+    }
+
+    #[tokio::test]
+    async fn test_register_and_heartbeat() {
+        let (wd, _rx) = Watchdog::new(WatchdogConfig::default());
+        let wd = Arc::new(wd);
+        wd.register("agent-xyz".to_string(), None).await.unwrap();
+        // 不注册过的 agent 不影响
+        wd.heartbeat("does-not-exist").await.unwrap();
+        wd.heartbeat("agent-xyz").await.unwrap();
+
+        let summary = wd.status_summary().await;
+        assert!(summary["agents"].is_array());
+    }
+
+    #[tokio::test]
+    async fn test_diagnose_escalate_when_max_restart_reached() {
+        let mut cfg = WatchdogConfig::default();
+        cfg.max_restart = 1;
+        let (wd, _rx) = Watchdog::new(cfg);
+        let wd = Arc::new(wd);
+        wd.register("a1".to_string(), None).await.unwrap();
+        // 手动增加 restart_count 到上限
+        {
+            let mut agents = wd.agents.write().await;
+            if let Some(m) = agents.get_mut("a1") {
+                m.restart_count = 1;
+            }
+        }
+        let (action, _) = wd.diagnose("a1").await;
+        matches!(action, RecoveryAction::Escalate);
+    }
+}
