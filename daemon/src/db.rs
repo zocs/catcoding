@@ -47,7 +47,9 @@ impl Database {
                 status TEXT NOT NULL DEFAULT 'idle',
                 current_task TEXT,
                 last_heartbeat TEXT NOT NULL,
-                restart_count INTEGER DEFAULT 0
+                restart_count INTEGER DEFAULT 0,
+                level INTEGER NOT NULL DEFAULT 1,
+                xp INTEGER NOT NULL DEFAULT 0
             );
 
             CREATE TABLE IF NOT EXISTS task_history (
@@ -59,11 +61,40 @@ impl Database {
                 details TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS xp_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_id TEXT NOT NULL,
+                task_id TEXT,
+                delta INTEGER NOT NULL,
+                reason TEXT NOT NULL,
+                old_xp INTEGER NOT NULL,
+                new_xp INTEGER NOT NULL,
+                old_level INTEGER NOT NULL,
+                new_level INTEGER NOT NULL,
+                timestamp TEXT NOT NULL
+            );
+
             CREATE INDEX IF NOT EXISTS idx_tasks_project ON tasks(project_id);
             CREATE INDEX IF NOT EXISTS idx_agents_project ON agents(project_id);
             CREATE INDEX IF NOT EXISTS idx_history_task ON task_history(task_id);
+            CREATE INDEX IF NOT EXISTS idx_xp_log_agent ON xp_log(agent_id);
         ",
         )?;
+
+        // Idempotent migration for pre-existing DBs created before level/xp columns were added.
+        // ALTER TABLE ADD COLUMN fails if the column already exists; we swallow that specific error.
+        for stmt in [
+            "ALTER TABLE agents ADD COLUMN level INTEGER NOT NULL DEFAULT 1",
+            "ALTER TABLE agents ADD COLUMN xp INTEGER NOT NULL DEFAULT 0",
+        ] {
+            if let Err(e) = conn.execute(stmt, []) {
+                let msg = e.to_string();
+                if !msg.contains("duplicate column name") {
+                    return Err(e.into());
+                }
+            }
+        }
+
         tracing::info!("SQLite schema initialized: {}", self.db_path);
         Ok(())
     }
@@ -192,8 +223,8 @@ impl Database {
     pub async fn insert_agent(&self, project_id: &str, agent: &AgentInfo) -> Result<()> {
         let conn = self.conn.lock().await;
         conn.execute(
-            "INSERT OR REPLACE INTO agents (id, project_id, role, status, current_task, last_heartbeat, restart_count)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            "INSERT OR REPLACE INTO agents (id, project_id, role, status, current_task, last_heartbeat, restart_count, level, xp)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 agent.id,
                 project_id,
@@ -202,6 +233,8 @@ impl Database {
                 agent.current_task,
                 agent.last_heartbeat.to_rfc3339(),
                 agent.restart_count,
+                agent.level,
+                agent.xp,
             ],
         )?;
         Ok(())
@@ -211,7 +244,7 @@ impl Database {
     pub async fn get_agents(&self, project_id: &str) -> Result<Vec<AgentInfo>> {
         let conn = self.conn.lock().await;
         let mut stmt = conn.prepare(
-            "SELECT id, role, status, current_task, last_heartbeat, restart_count
+            "SELECT id, role, status, current_task, last_heartbeat, restart_count, level, xp
              FROM agents WHERE project_id = ?1",
         )?;
 
@@ -222,6 +255,8 @@ impl Database {
             let current_task: Option<String> = row.get(3)?;
             let last_heartbeat_str: String = row.get(4)?;
             let restart_count: u32 = row.get(5)?;
+            let level: u32 = row.get(6)?;
+            let xp: u32 = row.get(7)?;
 
             let status = match status_str.as_str() {
                 "working" => AgentStatus::Working,
@@ -242,6 +277,8 @@ impl Database {
                 current_task,
                 last_heartbeat,
                 restart_count,
+                level,
+                xp,
             })
         })?;
 
@@ -250,6 +287,37 @@ impl Database {
             result.push(agent?);
         }
         Ok(result)
+    }
+
+    /// 记录一条 XP 变更
+    pub async fn insert_xp_log(
+        &self,
+        agent_id: &str,
+        task_id: Option<&str>,
+        delta: i32,
+        reason: &str,
+        old_xp: u32,
+        new_xp: u32,
+        old_level: u32,
+        new_level: u32,
+    ) -> Result<()> {
+        let conn = self.conn.lock().await;
+        conn.execute(
+            "INSERT INTO xp_log (agent_id, task_id, delta, reason, old_xp, new_xp, old_level, new_level, timestamp)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![
+                agent_id,
+                task_id,
+                delta,
+                reason,
+                old_xp,
+                new_xp,
+                old_level,
+                new_level,
+                Utc::now().to_rfc3339(),
+            ],
+        )?;
+        Ok(())
     }
 
     /// 获取任务历史

@@ -19,11 +19,13 @@ mod scheduler;
 mod skin;
 mod state;
 mod watchdog;
+mod xp;
 
 use adapter::AgentLifecycleManager;
 use api::ApiState;
 use db::Database;
 use memory::MemoryManager;
+use recovery::{FailureHandler, RecipeStore};
 use scheduler::{Scheduler, SchedulerConfig};
 use skin::cats::CatSkin;
 use skin::Skin;
@@ -137,6 +139,15 @@ async fn main() -> Result<()> {
     tracing::info!("  L3 skills: {}", memory_manager.l3.count());
     tracing::info!("  L4 sessions: {}", memory_manager.l4.count());
 
+    // Recovery system
+    let recipe_store = Arc::new(RecipeStore::new());
+    recipe_store.init_default_recipes().await;
+    let failure_handler = Arc::new(FailureHandler::new(recipe_store.clone()));
+    tracing::info!("Recovery system initialized (5 default recipes loaded)");
+    // NOTE: watchdog Escalate currently only logs. Wiring it into failure_handler
+    // happens in the next session (requires holding a clone inside Watchdog).
+    let _ = failure_handler.clone();
+
     // Log buffer
     let log_buffer = std::sync::Arc::new(log_buffer::LogBuffer::new(500));
 
@@ -153,6 +164,7 @@ async fn main() -> Result<()> {
         ws_tx: ws_tx.clone(),
         log_buffer: log_buffer.clone(),
         memory_manager: memory_manager.clone(),
+        started_at: std::time::Instant::now(),
     });
 
     let host = std::env::var("API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());

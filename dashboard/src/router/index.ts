@@ -50,6 +50,16 @@ const router = createRouter({
           path: 'memory',
           name: 'memory',
           component: () => import('../views/Memory.vue')
+        },
+        {
+          path: 'kitchen',
+          name: 'kitchen',
+          component: () => import('../views/Kitchen.vue')
+        },
+        {
+          path: 'team',
+          name: 'team',
+          component: () => import('../views/Team.vue')
         }
       ]
     }

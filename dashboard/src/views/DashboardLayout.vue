@@ -89,7 +89,9 @@ import {
   CodeSlashOutline,
   GridOutline,
   DocumentTextOutline,
-  HardwareChipOutline
+  HardwareChipOutline,
+  BugOutline,
+  LayersOutline
 } from '@vicons/ionicons5'
 import LangSwitch from '../components/LangSwitch.vue'
 import ThemeSwitch from '../components/ThemeSwitch.vue'
@@ -120,12 +122,14 @@ function renderIcon(icon: any) {
 
 const menuOptions = computed<MenuOption[]>(() => [
   { label: t('nav.agents'), key: 'agents', icon: renderIcon(PeopleOutline) },
-  { label: t('nav.gantt'), key: 'gantt', icon: renderIcon(BarChartOutline) },
-  { label: t('nav.terminal'), key: 'terminal', icon: renderIcon(TerminalOutline) },
-  { label: t('nav.commands'), key: 'commands', icon: renderIcon(CodeSlashOutline) },
-  { label: t('nav.memory'), key: 'memory', icon: renderIcon(HardwareChipOutline) },
-  { label: t('nav.logs'), key: 'logs', icon: renderIcon(DocumentTextOutline) },
+  { label: t('nav.team', '团队'), key: 'team', icon: renderIcon(LayersOutline) },
   { label: t('nav.board'), key: 'board', icon: renderIcon(GridOutline) },
+  { label: t('nav.kitchen', '厨房'), key: 'kitchen', icon: renderIcon(BugOutline) },
+  { label: t('nav.gantt'), key: 'gantt', icon: renderIcon(BarChartOutline) },
+  { label: t('nav.memory'), key: 'memory', icon: renderIcon(HardwareChipOutline) },
+  { label: t('nav.commands'), key: 'commands', icon: renderIcon(CodeSlashOutline) },
+  { label: t('nav.terminal'), key: 'terminal', icon: renderIcon(TerminalOutline) },
+  { label: t('nav.logs'), key: 'logs', icon: renderIcon(DocumentTextOutline) },
 ])
 
 const activeKey = computed(() => {

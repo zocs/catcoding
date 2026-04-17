@@ -120,6 +120,16 @@ pub struct AgentInfo {
     pub current_task: Option<String>,
     pub last_heartbeat: DateTime<Utc>,
     pub restart_count: u32,
+    /// Agent 等级 (Lv1-Lv5). 默认 1.
+    #[serde(default = "default_level")]
+    pub level: u32,
+    /// 经验值. 默认 0.
+    #[serde(default)]
+    pub xp: u32,
+}
+
+fn default_level() -> u32 {
+    1
 }
 
 impl AgentInfo {
@@ -131,6 +141,8 @@ impl AgentInfo {
             current_task: None,
             last_heartbeat: Utc::now(),
             restart_count: 0,
+            level: 1,
+            xp: 0,
         }
     }
 }
@@ -285,5 +297,79 @@ impl StateManager {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_task_status_roundtrip() {
+        for s in [
+            TaskStatus::Pending,
+            TaskStatus::Blocked,
+            TaskStatus::Ready,
+            TaskStatus::Active,
+            TaskStatus::Reviewing,
+            TaskStatus::Done,
+            TaskStatus::Rollbacked,
+            TaskStatus::Failed,
+        ] {
+            assert_eq!(TaskStatus::from_str(s.as_str()), s);
+        }
+    }
+
+    #[test]
+    fn test_task_status_from_str_unknown() {
+        assert_eq!(TaskStatus::from_str("nonsense"), TaskStatus::Pending);
+    }
+
+    #[test]
+    fn test_task_new_has_id_and_timestamps() {
+        let t = Task::new("hello", "world", Some("pm"));
+        assert_eq!(t.title, "hello");
+        assert_eq!(t.description, "world");
+        assert_eq!(t.assigned_to.as_deref(), Some("pm"));
+        assert_eq!(t.status, TaskStatus::Pending);
+        assert!(!t.id.is_empty());
+        assert!(t.depends_on.is_empty());
+        assert!(t.artifacts.is_empty());
+    }
+
+    #[test]
+    fn test_task_with_dependency_and_artifact() {
+        let t = Task::new("t", "d", None)
+            .with_dependency("dep1")
+            .with_artifact("src/main.rs");
+        assert_eq!(t.depends_on, vec!["dep1".to_string()]);
+        assert_eq!(t.artifacts, vec!["src/main.rs".to_string()]);
+    }
+
+    #[test]
+    fn test_agent_info_defaults_level_and_xp() {
+        let a = AgentInfo::new("agent-01", "pm");
+        assert_eq!(a.level, 1);
+        assert_eq!(a.xp, 0);
+        assert_eq!(a.restart_count, 0);
+        assert!(matches!(a.status, AgentStatus::Idle));
+    }
+
+    #[tokio::test]
+    async fn test_state_manager_add_and_update_task() {
+        let sm = StateManager::new();
+        let task = Task::new("t1", "d1", Some("pm"));
+        let task_id = task.id.clone();
+        sm.add_task("proj", task).await.unwrap();
+
+        let stored = sm.get_task("proj", &task_id).await;
+        assert!(stored.is_some());
+        assert_eq!(stored.unwrap().status, TaskStatus::Pending);
+
+        sm.update_task_status("proj", &task_id, TaskStatus::Active)
+            .await
+            .unwrap();
+        let updated = sm.get_task("proj", &task_id).await.unwrap();
+        assert_eq!(updated.status, TaskStatus::Active);
     }
 }
