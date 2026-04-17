@@ -1,11 +1,12 @@
-"""🐱 橘猫 — 前端开发 Agent"""
+"""🐱 橘猫 — Frontend Agent (honest scaffold)"""
 
 import asyncio
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "base"))
 from agent import BaseAgent
+from scaffold import scaffold_task
 
 
 class FrontendAgent(BaseAgent):
@@ -13,12 +14,13 @@ class FrontendAgent(BaseAgent):
         super().__init__(agent_id, "frontend", project_id, workdir)
 
     async def execute_task(self, msg):
-        self._log(f"🎨 前端任务: {msg.summary}")
-        steps = ["分析需求", "设计组件结构", "编写模板", "添加样式", "测试交互"]
-        for i, step in enumerate(steps, 1):
-            await asyncio.sleep(1)
-            self._send_progress(msg.task_id, i * 20, step)
-        self._log("✅ 前端任务完成")
+        self._log(f"🎨 前端任务 (scaffold mode): {msg.summary}")
+        await scaffold_task(
+            self,
+            msg,
+            ["分析需求", "设计组件结构", "生成模板骨架", "样式占位", "落盘产物"],
+        )
+        self._log("✅ 前端骨架完成")
 
 
 async def main():
@@ -27,7 +29,7 @@ async def main():
         os.environ.get("PROJECT_ID", "default"),
         os.environ.get("WORKDIR", "."),
     )
-    print(f"🐱 橘猫 Agent 启动: {agent.agent_id}", flush=True)
+    print(f"🐱 橘猫 Agent 启动 (scaffold mode): {agent.agent_id}", flush=True)
     await agent.run()
 
 

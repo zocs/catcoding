@@ -5,6 +5,7 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
 use crate::adapter::{AgentContext, AgentLifecycleManager};
+use crate::router::MessageRouter;
 use crate::state::{Task, TaskStatus};
 use crate::watchdog::Watchdog;
 
@@ -45,6 +46,10 @@ pub struct Scheduler {
     lifecycle_manager: Arc<Mutex<AgentLifecycleManager>>,
     /// Watchdog（用于注册监控）
     watchdog: Option<Arc<Watchdog>>,
+    /// Message router for publishing task events to NATS
+    router: Option<Arc<MessageRouter>>,
+    /// Per-role concurrency caps, loaded from roles.yaml
+    role_limits: Arc<RwLock<HashMap<String, usize>>>,
 }
 
 impl Scheduler {
@@ -58,6 +63,8 @@ impl Scheduler {
             idle_agents: Arc::new(RwLock::new(HashMap::new())),
             lifecycle_manager,
             watchdog: None,
+            router: None,
+            role_limits: Arc::new(RwLock::new(HashMap::new())),
         }
     }
 
@@ -65,6 +72,87 @@ impl Scheduler {
     pub fn with_watchdog(mut self, watchdog: Arc<Watchdog>) -> Self {
         self.watchdog = Some(watchdog);
         self
+    }
+
+    /// 设置 Router（用于发布任务事件到 NATS）
+    pub fn with_router(mut self, router: Arc<MessageRouter>) -> Self {
+        self.router = Some(router);
+        self
+    }
+
+    /// 从 `.catcoding/roles.yaml` 加载每个 role 的 `max_concurrent` 限额.
+    /// 文件不存在或解析失败时，静默忽略（日志提示），使用 `SchedulerConfig.max_concurrent_tasks`
+    /// 作为全局 fallback。
+    pub async fn load_role_limits(&self, path: &str) {
+        let content = match std::fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::info!(
+                    "roles.yaml not found at {} ({}) — using global max_concurrent={}",
+                    path,
+                    e,
+                    self.config.max_concurrent_tasks
+                );
+                return;
+            }
+        };
+
+        let mut parsed: HashMap<String, usize> = HashMap::new();
+        // Minimal YAML parser — we only need `agents: [{role: X, max_concurrent: N}]`.
+        // Avoid pulling in the `serde_yaml` crate for one shallow schema.
+        let mut in_agents = false;
+        let mut current_role: Option<String> = None;
+        for raw in content.lines() {
+            let line = raw.trim_end();
+            let trimmed = line.trim_start();
+            if trimmed.starts_with('#') || trimmed.is_empty() {
+                continue;
+            }
+            if line.starts_with("agents:") {
+                in_agents = true;
+                continue;
+            }
+            if in_agents && !line.starts_with(' ') && !line.starts_with('-') && !trimmed.is_empty()
+            {
+                // Left column keyword — we left the agents: block.
+                in_agents = false;
+                current_role = None;
+                continue;
+            }
+            if !in_agents {
+                continue;
+            }
+            if trimmed.starts_with("- ") {
+                // New list entry — reset role.
+                current_role = None;
+            }
+            let cleaned = trimmed.trim_start_matches("- ").trim();
+            if let Some(rest) = cleaned.strip_prefix("role:") {
+                current_role = Some(
+                    rest.trim()
+                        .trim_matches('"')
+                        .trim_matches('\'')
+                        .to_string(),
+                );
+            } else if let Some(rest) = cleaned.strip_prefix("max_concurrent:") {
+                if let (Some(role), Ok(n)) = (current_role.as_deref(), rest.trim().parse::<usize>())
+                {
+                    parsed.insert(role.to_string(), n);
+                }
+            }
+        }
+
+        if parsed.is_empty() {
+            tracing::info!("roles.yaml parsed but no max_concurrent entries found");
+            return;
+        }
+
+        tracing::info!(
+            "Loaded role concurrency limits from {}: {:?}",
+            path,
+            parsed
+        );
+        *self.role_limits.write().await = parsed;
     }
 
     /// 添加任务到调度队列
@@ -99,21 +187,39 @@ impl Scheduler {
         self.idle_agents.read().await.len()
     }
 
-    /// 确保指定角色有可用 Agent，没有则自动 spawn
+    /// 确保指定角色有可用 Agent，没有则自动 spawn（受 max_concurrent 约束）
     pub async fn ensure_agent_for_role(
         &self,
         role: &str,
         project_id: &str,
     ) -> Result<Option<String>> {
         // 检查是否已有空闲 agent
-        {
+        let current_count = {
             let agents = self.idle_agents.read().await;
             if let Some(agent) = agents.values().find(|a| a.is_idle && a.role == role) {
                 return Ok(Some(agent.agent_id.clone()));
             }
+            agents.values().filter(|a| a.role == role).count()
+        };
+
+        // Enforce per-role max_concurrent cap (from roles.yaml).
+        let limit = {
+            let limits = self.role_limits.read().await;
+            limits.get(role).copied()
+        };
+        if let Some(cap) = limit {
+            if current_count >= cap {
+                tracing::debug!(
+                    "Role {} at max_concurrent cap {} (current {}); won't spawn",
+                    role,
+                    cap,
+                    current_count
+                );
+                return Ok(None);
+            }
         }
 
-        // 没有空闲 agent → 自动 spawn
+        // 没有空闲 agent 且未达上限 → 自动 spawn
         let agent_id = format!("{}-{}", role, &uuid::Uuid::new_v4().to_string()[..8]);
         tracing::info!(
             "🐱 Auto-spawning Agent: role={}, agent_id={}",
@@ -272,6 +378,22 @@ impl Scheduler {
                                 let _ = state_manager
                                     .update_task_status(&project_id, &task.id, TaskStatus::Active)
                                     .await;
+
+                                // Publish task.assigned event to NATS
+                                if let Some(ref router) = self.router {
+                                    let subject = MessageRouter::task_subject(
+                                        task.assigned_to.as_deref().unwrap_or("core_dev"),
+                                    );
+                                    let payload = serde_json::json!({
+                                        "type": "task.assigned",
+                                        "task_id": task.id,
+                                        "title": task.title,
+                                        "assigned_to": task.assigned_to,
+                                        "agent_id": agent_id,
+                                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                                    });
+                                    let _ = router.publish_json(&subject, &payload).await;
+                                }
                             }
                             Err(e) => {
                                 tracing::error!("Task dispatch failed: {}, re-queued", e);

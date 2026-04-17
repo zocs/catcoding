@@ -4,6 +4,7 @@ import { NPageHeader, NCard, NTag, NSpace, NButton, NEmpty, useMessage } from 'n
 import { Agent, CatCodingApi, AGENT_ROLES_FIXED } from '@/api/types'
 import CatAvatarSVG from '@/components/CatAvatarSVG.vue'
 import EasterEgg from '@/components/EasterEgg.vue'
+import XpBadge from '@/components/XpBadge.vue'
 import { useI18n } from 'vue-i18n'
 import { useResponsive } from '@/composables/useResponsive'
 
@@ -203,6 +204,9 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
                   {{ getStatusLabel(agent.status) }}
                 </n-tag>
               </div>
+              <div v-if="agent.mode !== 'decorative'" class="xp-slot">
+                <XpBadge :level="agent.level ?? 1" :xp="agent.xp ?? 0" compact />
+              </div>
               <div v-if="agent.current_task" class="current-task">
                 🔧 <span class="task-id">#{{ agent.current_task }}</span>
               </div>
@@ -245,6 +249,9 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
                 <n-tag :type="getStatusType(agent.status)" size="small" round>
                   {{ getStatusLabel(agent.status) }}
                 </n-tag>
+              </div>
+              <div class="xp-slot">
+                <XpBadge :level="agent.level ?? 1" :xp="agent.xp ?? 0" compact />
               </div>
               <div v-if="agent.current_task" class="current-task">
                 🔧 <span class="task-id">#{{ agent.current_task }}</span>
@@ -461,6 +468,11 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
   margin-top: 8px;
   font-size: 13px;
   opacity: 0.85;
+}
+
+.xp-slot {
+  margin-top: 8px;
+  width: 100%;
 }
 
 .mobile .current-task {

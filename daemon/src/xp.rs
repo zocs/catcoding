@@ -1,13 +1,15 @@
-//! Agent XP / 等级系统 — 基础类型与纯函数
+//! Agent XP / 等级系统 — 类型 + 纯函数 + 持久化引擎
 //!
-//! 计划书 §4.6 定义的 5 级系统。当前本模块只包含类型、等级计算和 XP 规则，
-//! 尚未接入 scheduler/watchdog 的事件回调——接线在下一次会话完成。
-//!
-//! 设计目标：让 `Scheduler` 完成任务时调用 `XpEngine::apply(event)`，引擎根据
-//! 事件查规则、更新 `AgentInfo.level/xp`、写 `xp_log` 表、并广播升级事件到
-//! Dashboard。接线点以及完整引擎留到下一会话。
+//! 计划书 §4.6 定义的 5 级系统。`XpEngine` 负责持久化接线：它持有
+//! `StateManager` 和 `Database` 句柄，在收到事件时更新内存状态、SQLite
+//! agents 表、xp_log 审计表，并返回 `XpOutcome` 供 Dashboard 广播升级事件。
 
 use serde::{Deserialize, Serialize};
+
+use std::sync::Arc;
+
+use crate::db::Database;
+use crate::state::StateManager;
 
 /// XP 门槛 — 下标 i 表示升到 i+1 级所需累计 XP。
 /// Lv1=0, Lv2=50, Lv3=200, Lv4=500, Lv5=1000.
@@ -113,6 +115,85 @@ pub fn apply_event(current_xp: u32, current_level: u32, event: &XpEvent) -> XpOu
         new_level,
         delta,
         leveled_up: new_level > current_level,
+    }
+}
+
+/// XP 持久化引擎 — 把事件应用到内存状态 + SQLite 冷存储 + xp_log。
+pub struct XpEngine {
+    state: Arc<StateManager>,
+    db: Option<Arc<Database>>,
+}
+
+impl XpEngine {
+    pub fn new(state: Arc<StateManager>, db: Option<Arc<Database>>) -> Self {
+        Self { state, db }
+    }
+
+    /// 给指定 agent 应用一个 XP 事件。返回 `None` 如果 agent 不存在。
+    pub async fn apply(
+        &self,
+        project_id: &str,
+        agent_id: &str,
+        task_id: Option<&str>,
+        event: &XpEvent,
+    ) -> anyhow::Result<Option<XpOutcome>> {
+        let agent = match self.state.get_agent(project_id, agent_id).await {
+            Some(a) => a,
+            None => {
+                tracing::warn!("XpEngine: agent {} not found in project {}", agent_id, project_id);
+                return Ok(None);
+            }
+        };
+
+        let outcome = apply_event(agent.xp, agent.level, event);
+
+        if outcome.leveled_up {
+            tracing::info!(
+                "🎉 Agent {} leveled up: Lv{} → Lv{} (xp {} → {})",
+                agent_id,
+                outcome.old_level,
+                outcome.new_level,
+                outcome.old_xp,
+                outcome.new_xp
+            );
+        } else {
+            tracing::debug!(
+                "Agent {} xp {} → {} ({}, Lv{})",
+                agent_id,
+                outcome.old_xp,
+                outcome.new_xp,
+                event.reason(),
+                outcome.new_level
+            );
+        }
+
+        // Update in-memory state
+        self.state
+            .update_agent_xp(project_id, agent_id, outcome.new_xp, outcome.new_level)
+            .await?;
+
+        // Write audit log to SQLite
+        if let Some(db) = &self.db {
+            db.insert_xp_log(
+                agent_id,
+                task_id,
+                outcome.delta,
+                event.reason(),
+                outcome.old_xp,
+                outcome.new_xp,
+                outcome.old_level,
+                outcome.new_level,
+            )
+            .await?;
+
+            // Also persist the updated agent row so xp/level survive restart.
+            let mut persisted = agent.clone();
+            persisted.xp = outcome.new_xp;
+            persisted.level = outcome.new_level;
+            db.insert_agent(project_id, &persisted).await?;
+        }
+
+        Ok(Some(outcome))
     }
 }
 

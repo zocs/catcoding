@@ -19,6 +19,7 @@ use crate::memory::MemoryManager;
 use crate::scheduler::Scheduler;
 use crate::state::{StateManager, Task, TaskStatus};
 use crate::watchdog::Watchdog;
+use crate::xp::{XpEngine, XpEvent};
 
 /// 嵌入式 Dashboard 静态文件
 #[derive(RustEmbed)]
@@ -40,6 +41,12 @@ pub struct ApiState {
     pub memory_manager: Arc<MemoryManager>,
     /// Daemon start time, for `/api/health` uptime.
     pub started_at: Instant,
+    /// XP persistence engine (awards XP on task status transitions).
+    pub xp_engine: Arc<XpEngine>,
+    /// Optional NATS router: real pub/sub when connected.
+    pub router: Arc<crate::router::MessageRouter>,
+    /// Cold storage handle (for reading xp_log etc).
+    pub db: Option<Arc<crate::db::Database>>,
 }
 
 /// 命令请求
@@ -89,6 +96,7 @@ pub fn create_router(state: Arc<ApiState>) -> Router {
         .route("/api/logs", get(list_logs))
         .route("/api/memory/status", get(memory_status))
         .route("/api/memory/search", get(memory_search))
+        .route("/api/agents/{id}/xp-log", get(agent_xp_log))
         .route("/ws", get(ws_handler))
         .route("/dashboard", get(dashboard_index))
         .route("/dashboard/{*path}", get(dashboard_handler))
@@ -259,6 +267,10 @@ async fn update_task_status(
         }
     };
 
+    // Capture prior status so we can decide XP event (was it a retry?).
+    let prior_task = state.state_manager.get_task(&state.project_id, &id).await;
+    let prior_status = prior_task.as_ref().map(|t| t.status.clone());
+
     match state
         .state_manager
         .update_task_status(&state.project_id, &id, new_status.clone())
@@ -266,6 +278,76 @@ async fn update_task_status(
     {
         Ok(_) => {
             tracing::info!("Task {} status updated to {:?}", id, new_status);
+
+            // ═══ XP event hook ═══
+            // Award XP on status transitions. Only applies when the task has
+            // an assigned agent role + an actual agent running that role.
+            if let Some(task) = state.state_manager.get_task(&state.project_id, &id).await {
+                let event = xp_event_for_transition(prior_status.as_ref(), &new_status);
+                if let (Some(ev), Some(role)) = (event, task.assigned_to.as_deref()) {
+                    // Find an agent with that role (first match).
+                    let project = state.state_manager.get_project(&state.project_id).await;
+                    let agent_id = project.and_then(|p| {
+                        p.agents
+                            .values()
+                            .find(|a| a.role == role)
+                            .map(|a| a.id.clone())
+                    });
+                    if let Some(aid) = agent_id {
+                        match state
+                            .xp_engine
+                            .apply(&state.project_id, &aid, Some(&task.id), &ev)
+                            .await
+                        {
+                            Ok(Some(outcome)) => {
+                                // Broadcast XP event on WebSocket for real-time dashboard update.
+                                let ws_msg = json!({
+                                    "type": "xp.update",
+                                    "agent_id": aid,
+                                    "task_id": task.id,
+                                    "event": ev.reason(),
+                                    "delta": outcome.delta,
+                                    "old_xp": outcome.old_xp,
+                                    "new_xp": outcome.new_xp,
+                                    "old_level": outcome.old_level,
+                                    "new_level": outcome.new_level,
+                                    "leveled_up": outcome.leveled_up,
+                                });
+                                let _ = state.ws_tx.send(ws_msg.to_string());
+
+                                // Also publish to NATS router if connected.
+                                let _ = state
+                                    .router
+                                    .publish_json(
+                                        &format!("agent.{}.xp", aid),
+                                        &ws_msg,
+                                    )
+                                    .await;
+                            }
+                            Ok(None) => {
+                                tracing::debug!("XP: agent {} not found, skipped", aid);
+                            }
+                            Err(e) => {
+                                tracing::warn!("XP apply failed: {}", e);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Publish task status update to NATS.
+            let _ = state
+                .router
+                .publish_json(
+                    &crate::router::MessageRouter::log_subject(&state.project_id),
+                    &json!({
+                        "type": "task.status",
+                        "task_id": id,
+                        "status": status_str,
+                    }),
+                )
+                .await;
+
             Json(json!({
                 "id": id,
                 "status": status_str,
@@ -278,6 +360,21 @@ async fn update_task_status(
             Json(json!({ "error": e.to_string() })),
         )
             .into_response(),
+    }
+}
+
+/// Decide which XP event, if any, a status transition should emit.
+fn xp_event_for_transition(prev: Option<&TaskStatus>, new: &TaskStatus) -> Option<XpEvent> {
+    match (prev, new) {
+        // First successful completion — review passed on the first try.
+        (Some(TaskStatus::Reviewing), TaskStatus::Done) => Some(XpEvent::ReviewPassedFirst),
+        // Task completed without a review stage.
+        (_, TaskStatus::Done) => Some(XpEvent::TaskCompleted),
+        // Task failed outright.
+        (_, TaskStatus::Failed) => Some(XpEvent::TaskFailed),
+        // Task rolled back — treat as failed retry.
+        (_, TaskStatus::Rollbacked) => Some(XpEvent::TaskFailed),
+        _ => None,
     }
 }
 
@@ -333,6 +430,28 @@ async fn dashboard_handler(Path(path): Path<String>) -> Response {
 async fn memory_status(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
     let summary = state.memory_manager.status_summary();
     Json(summary)
+}
+
+/// Agent XP 审计日志
+async fn agent_xp_log(
+    State(state): State<Arc<ApiState>>,
+    Path(id): Path<String>,
+) -> Response {
+    match &state.db {
+        Some(db) => match db.get_xp_log(&id, 50).await {
+            Ok(rows) => Json(json!({ "agent_id": id, "entries": rows })).into_response(),
+            Err(e) => (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                Json(json!({ "error": e.to_string() })),
+            )
+                .into_response(),
+        },
+        None => (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "error": "Database not available" })),
+        )
+            .into_response(),
+    }
 }
 
 /// Search memory by keyword

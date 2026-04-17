@@ -26,11 +26,13 @@ use api::ApiState;
 use db::Database;
 use memory::MemoryManager;
 use recovery::{FailureHandler, RecipeStore};
+use router::MessageRouter;
 use scheduler::{Scheduler, SchedulerConfig};
 use skin::cats::CatSkin;
 use skin::Skin;
 use state::StateManager;
 use watchdog::{Watchdog, WatchdogConfig};
+use xp::XpEngine;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -82,12 +84,63 @@ async fn main() -> Result<()> {
     let lifecycle_manager = Arc::new(Mutex::new(AgentLifecycleManager::new()));
     tracing::info!("Agent lifecycle manager initialized");
 
-    // Scheduler (with watchdog integration)
+    // NATS connection (optional — daemon degrades to in-memory-only if unreachable)
+    let nats_url =
+        std::env::var("NATS_URL").unwrap_or_else(|_| "nats://127.0.0.1:4222".to_string());
+    let nats_client: Option<async_nats::Client> = match async_nats::connect(&nats_url).await {
+        Ok(client) => {
+            tracing::info!("Connected to NATS: {}", nats_url);
+            // Subscribe to agent heartbeats
+            let watchdog_for_heartbeat = watchdog.clone();
+            match client.subscribe("agent.heartbeat").await {
+                Ok(mut sub) => {
+                    tokio::spawn(async move {
+                        while let Some(msg) = sub.next().await {
+                            if let Ok(data) =
+                                serde_json::from_slice::<serde_json::Value>(&msg.payload)
+                            {
+                                if let Some(agent_id) =
+                                    data.get("agent_id").and_then(|v| v.as_str())
+                                {
+                                    let _ = watchdog_for_heartbeat.heartbeat(agent_id).await;
+                                }
+                            }
+                        }
+                    });
+                }
+                Err(e) => {
+                    tracing::warn!("NATS subscribe 'agent.heartbeat' failed: {}", e);
+                }
+            }
+            Some(client)
+        }
+        Err(e) => {
+            tracing::warn!("NATS connection failed ({}): using in-memory mode", e);
+            tracing::info!("Hint: ensure NATS Server is running at {}", nats_url);
+            None
+        }
+    };
+
+    // Message router — wraps NATS client (or no-op if disconnected)
+    let router = Arc::new(MessageRouter::new(nats_client.clone()));
+    tracing::info!(
+        "Message router: {}",
+        if router.is_connected() {
+            "connected to NATS"
+        } else {
+            "offline (publishes become no-ops, subscribes error)"
+        }
+    );
+
+    // Scheduler (with watchdog + router integration)
     let scheduler_config = SchedulerConfig::default();
     let scheduler = Arc::new(
         Scheduler::new(scheduler_config.clone(), lifecycle_manager.clone())
-            .with_watchdog(watchdog.clone()),
+            .with_watchdog(watchdog.clone())
+            .with_router(router.clone()),
     );
+    // Load per-role max_concurrent from roles.yaml (if present)
+    scheduler.load_role_limits(".catcoding/roles.yaml").await;
     tracing::info!(
         "Scheduler started - interval: {}s, max concurrent: {}",
         scheduler_config.check_interval,
@@ -100,31 +153,6 @@ async fn main() -> Result<()> {
             .start_scheduling(state_clone, "default".to_string())
             .await;
     });
-
-    // NATS connection
-    let nats_url =
-        std::env::var("NATS_URL").unwrap_or_else(|_| "nats://127.0.0.1:4222".to_string());
-    match async_nats::connect(&nats_url).await {
-        Ok(client) => {
-            tracing::info!("Connected to NATS: {}", nats_url);
-            // Subscribe to agent heartbeats
-            let watchdog_for_heartbeat = watchdog.clone();
-            let mut sub = client.subscribe("agent.heartbeat").await?;
-            tokio::spawn(async move {
-                while let Some(msg) = sub.next().await {
-                    if let Ok(data) = serde_json::from_slice::<serde_json::Value>(&msg.payload) {
-                        if let Some(agent_id) = data.get("agent_id").and_then(|v| v.as_str()) {
-                            let _ = watchdog_for_heartbeat.heartbeat(agent_id).await;
-                        }
-                    }
-                }
-            });
-        }
-        Err(e) => {
-            tracing::warn!("NATS connection failed ({}): using in-memory mode", e);
-            tracing::info!("Hint: ensure NATS Server is running at {}", nats_url);
-        }
-    }
 
     // Load history from SQLite
     state_manager.load_from_db("default").await?;
@@ -154,6 +182,10 @@ async fn main() -> Result<()> {
     // WebSocket broadcast channel
     let (ws_tx, _ws_rx) = broadcast::channel::<String>(100);
 
+    // XP engine (state + SQLite persistence)
+    let xp_engine = Arc::new(XpEngine::new(state_manager.clone(), Some(db.clone())));
+    tracing::info!("XP engine initialized");
+
     // API server state
     let api_state = Arc::new(ApiState {
         project_id: "default".to_string(),
@@ -165,6 +197,9 @@ async fn main() -> Result<()> {
         log_buffer: log_buffer.clone(),
         memory_manager: memory_manager.clone(),
         started_at: std::time::Instant::now(),
+        xp_engine: xp_engine.clone(),
+        router: router.clone(),
+        db: Some(db.clone()),
     });
 
     let host = std::env::var("API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());

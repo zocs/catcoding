@@ -320,6 +320,46 @@ impl Database {
         Ok(())
     }
 
+    /// 读取某 agent 的 XP 历史（最近 `limit` 条，默认 50）
+    pub async fn get_xp_log(
+        &self,
+        agent_id: &str,
+        limit: u32,
+    ) -> Result<Vec<serde_json::Value>> {
+        let conn = self.conn.lock().await;
+        let mut stmt = conn.prepare(
+            "SELECT task_id, delta, reason, old_xp, new_xp, old_level, new_level, timestamp
+             FROM xp_log WHERE agent_id = ?1 ORDER BY timestamp DESC LIMIT ?2",
+        )?;
+
+        let rows = stmt.query_map(params![agent_id, limit], |row| {
+            let task_id: Option<String> = row.get(0)?;
+            let delta: i32 = row.get(1)?;
+            let reason: String = row.get(2)?;
+            let old_xp: u32 = row.get(3)?;
+            let new_xp: u32 = row.get(4)?;
+            let old_level: u32 = row.get(5)?;
+            let new_level: u32 = row.get(6)?;
+            let ts: String = row.get(7)?;
+            Ok(serde_json::json!({
+                "task_id": task_id,
+                "delta": delta,
+                "reason": reason,
+                "old_xp": old_xp,
+                "new_xp": new_xp,
+                "old_level": old_level,
+                "new_level": new_level,
+                "timestamp": ts,
+            }))
+        })?;
+
+        let mut out = Vec::new();
+        for r in rows {
+            out.push(r?);
+        }
+        Ok(out)
+    }
+
     /// 获取任务历史
     pub async fn get_task_history(&self, task_id: &str) -> Result<Vec<(String, String, String)>> {
         let conn = self.conn.lock().await;

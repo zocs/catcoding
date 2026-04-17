@@ -274,6 +274,33 @@ impl StateManager {
             .and_then(|p| p.tasks.get(task_id).cloned())
     }
 
+    /// 获取 Agent
+    pub async fn get_agent(&self, project_id: &str, agent_id: &str) -> Option<AgentInfo> {
+        self.projects
+            .read()
+            .await
+            .get(project_id)
+            .and_then(|p| p.agents.get(agent_id).cloned())
+    }
+
+    /// 更新 Agent 的 XP 和等级（内存）
+    pub async fn update_agent_xp(
+        &self,
+        project_id: &str,
+        agent_id: &str,
+        new_xp: u32,
+        new_level: u32,
+    ) -> Result<()> {
+        let mut projects = self.projects.write().await;
+        if let Some(project) = projects.get_mut(project_id) {
+            if let Some(agent) = project.agents.get_mut(agent_id) {
+                agent.xp = new_xp;
+                agent.level = new_level;
+            }
+        }
+        Ok(())
+    }
+
     /// 从 SQLite 加载历史数据
     pub async fn load_from_db(&self, project_id: &str) -> Result<()> {
         if let Some(db) = &self.db {

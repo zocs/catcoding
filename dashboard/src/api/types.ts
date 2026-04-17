@@ -77,6 +77,8 @@ export type AgentStatus = 'idle' | 'active' | 'busy' | 'error'
 export type AgentMode = 'resident' | 'on_demand' | 'decorative'
 
 export interface Agent {
+  /** Daemon 返回的 agent_id，例如 `frontend-24c99022` */
+  id?: string
   role: string          // 唯一标识: pm, core_dev, frontend, ...
   name: string          // 显示名: 暹罗猫, 英短蓝猫, ...
   emoji: string         // 头像: 🐱, 🦉, 🦊, 🐼
@@ -84,6 +86,24 @@ export interface Agent {
   description: string
   mode: AgentMode
   current_task: string | null
+  /** XP 等级 (Lv1–Lv5)。Daemon 返回缺省视为 1。*/
+  level?: number
+  /** 累计经验值。Daemon 返回缺省视为 0。*/
+  xp?: number
+  /** 重启次数 */
+  restart_count?: number
+}
+
+/** XP 审计日志条目 */
+export interface XpLogEntry {
+  task_id: string | null
+  delta: number
+  reason: string
+  old_xp: number
+  new_xp: number
+  old_level: number
+  new_level: number
+  timestamp: string
 }
 
 /** 项目 */
@@ -207,6 +227,10 @@ export class CatCodingApi {
 
   async getAgents(): Promise<Agent[]> {
     return fetch(`${this.baseUrl}/api/agents`).then(r => r.json()).then(d => d.agents)
+  }
+
+  async getXpLog(agentId: string): Promise<XpLogEntry[]> {
+    return fetch(`${this.baseUrl}/api/agents/${agentId}/xp-log`).then(r => r.json()).then(d => d.entries || [])
   }
 
   async getWatchdog(): Promise<WatchdogStatus> {

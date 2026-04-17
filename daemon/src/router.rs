@@ -1,23 +1,18 @@
 use anyhow::Result;
+use async_nats::Client;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 
 /// 消息类型
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum MessageType {
-    /// 任务结果
     TaskResult,
-    /// 状态更新
     StatusUpdate,
-    /// 请求
     Request,
-    /// 告警
     Alert,
-    /// 心跳
     Heartbeat,
 }
 
-/// 任务状态
+/// 任务状态（消息侧）
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum MessageStatus {
     Completed,
@@ -77,55 +72,80 @@ impl AgentMessage {
     }
 }
 
-/// 消息路由器 — 基于 NATS 的消息路由
+/// 消息路由器 — 真 NATS Pub/Sub 实现
 ///
-/// 通信通道：
-/// - 任务队列: NATS Stream "tasks.{role}" — 持久化，支持消费者组
-/// - 实时通信: NATS Pub/Sub "agent.{id}.progress" — 实时推送
-/// - 心跳: NATS Pub/Sub "agent.heartbeat" — Watchdog 订阅
-/// - 日志流: NATS Stream "logs.{project_id}" — 持久化+实时
-/// - 告警: NATS Pub/Sub "watchdog.alert" — PM Agent 订阅
+/// 若 NATS 不可达，`client` 为 `None`，`publish_*` 静默成功、返回 `Ok(())`，
+/// 调用方不用特判。订阅方法在 `client` 为 `None` 时直接报错。
+///
+/// 通道（约定）：
+/// - `tasks.{role}`          — 任务队列（Stream，持久化）
+/// - `agent.{id}.progress`   — Agent 进度推送（Pub/Sub）
+/// - `agent.{id}.xp`         — XP / 等级变更（Pub/Sub）
+/// - `agent.heartbeat`       — 心跳（Watchdog 订阅）
+/// - `logs.{project_id}`     — 日志流（Stream）
+/// - `watchdog.alert`        — Watchdog 告警
 pub struct MessageRouter {
-    /// 消息回调处理器
-    handlers: HashMap<String, Box<dyn Fn(AgentMessage) + Send + Sync>>,
+    client: Option<Client>,
 }
 
 impl MessageRouter {
-    pub fn new() -> Self {
-        Self {
-            handlers: HashMap::new(),
-        }
+    pub fn new(client: Option<Client>) -> Self {
+        Self { client }
     }
 
-    /// 注册消息处理器
-    pub fn register_handler(
-        &mut self,
-        subject: &str,
-        handler: Box<dyn Fn(AgentMessage) + Send + Sync>,
-    ) {
-        self.handlers.insert(subject.to_string(), handler);
+    pub fn is_connected(&self) -> bool {
+        self.client.is_some()
     }
 
-    /// 发送消息到指定 subject
+    /// 发送一条 `AgentMessage` 到指定 subject
     pub async fn publish(&self, subject: &str, message: &AgentMessage) -> Result<()> {
         let payload = serde_json::to_vec(message)?;
-        tracing::debug!(
-            "Routing message [{}] → {} ({} bytes)",
-            subject,
-            message.to,
-            payload.len()
-        );
-        // TODO: 实际通过 NATS 发送
-        // let client = async_nats::connect("nats://localhost:4222").await?;
-        // client.publish(subject, payload.into()).await?;
+        self.publish_bytes(subject, payload).await
+    }
+
+    /// 发送任意 JSON 到指定 subject
+    pub async fn publish_json(
+        &self,
+        subject: &str,
+        value: &serde_json::Value,
+    ) -> Result<()> {
+        let payload = serde_json::to_vec(value)?;
+        self.publish_bytes(subject, payload).await
+    }
+
+    /// 底层字节发送
+    pub async fn publish_bytes(&self, subject: &str, payload: Vec<u8>) -> Result<()> {
+        let Some(client) = self.client.as_ref() else {
+            tracing::trace!(
+                "NATS offline, skip publish [{}] ({} bytes)",
+                subject,
+                payload.len()
+            );
+            return Ok(());
+        };
+
+        let subject_owned: String = subject.to_string();
+        let n = payload.len();
+        client
+            .publish(subject_owned.clone(), payload.into())
+            .await
+            .map_err(|e| anyhow::anyhow!("NATS publish to {} failed: {}", subject_owned, e))?;
+        tracing::debug!("NATS publish [{}] ({} bytes)", subject_owned, n);
         Ok(())
     }
 
-    /// 订阅 subject
-    pub async fn subscribe(&self, subject: &str) -> Result<()> {
-        tracing::info!("Subscribing to: {}", subject);
-        // TODO: 实际通过 NATS 订阅
-        Ok(())
+    /// 订阅 subject；订阅结果由调用方自行 `while let Some(msg) = sub.next().await`
+    pub async fn subscribe(&self, subject: &str) -> Result<async_nats::Subscriber> {
+        let client = self
+            .client
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("NATS not connected — cannot subscribe to {}", subject))?;
+        let sub = client
+            .subscribe(subject.to_string())
+            .await
+            .map_err(|e| anyhow::anyhow!("NATS subscribe to {} failed: {}", subject, e))?;
+        tracing::info!("NATS subscribed: {}", subject);
+        Ok(sub)
     }
 
     /// 生成 NATS subject
@@ -135,6 +155,10 @@ impl MessageRouter {
 
     pub fn progress_subject(agent_id: &str) -> String {
         format!("agent.{}.progress", agent_id)
+    }
+
+    pub fn xp_subject(agent_id: &str) -> String {
+        format!("agent.{}.xp", agent_id)
     }
 
     pub fn heartbeat_subject() -> &'static str {

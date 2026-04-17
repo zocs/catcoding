@@ -1,9 +1,10 @@
 <script setup lang="ts">
 // Team.vue — 🐾 团队视图：按项目分组查看 Agent + 等级
 import { ref, onMounted, computed } from 'vue'
-import { NPageHeader, NCard, NTag, NSpace, NProgress, NButton, NEmpty, useMessage } from 'naive-ui'
+import { NPageHeader, NCard, NButton, NEmpty, NTag, useMessage } from 'naive-ui'
 import { Agent, CatCodingApi, AGENT_ROLES_FIXED } from '@/api/types'
 import CatAvatar from '@/components/CatAvatar.vue'
+import XpBadge from '@/components/XpBadge.vue'
 import { useI18n } from 'vue-i18n'
 import { useResponsive } from '@/composables/useResponsive'
 
@@ -13,16 +14,6 @@ const api = new CatCodingApi()
 const message = useMessage()
 const agents = ref<Agent[]>([])
 const loading = ref(false)
-
-const XP_PER_LEVEL = [0, 50, 200, 500, 1000, 2000]
-
-function xpForNext(level: number): number {
-  return XP_PER_LEVEL[Math.min(level, XP_PER_LEVEL.length - 1)] || 2000
-}
-
-function xpForCurrent(level: number): number {
-  return XP_PER_LEVEL[Math.max(0, level - 1)] || 0
-}
 
 async function fetchAgents() {
   loading.value = true
@@ -37,7 +28,6 @@ async function fetchAgents() {
 }
 
 const groups = computed(() => {
-  // Group by role for display
   const m = new Map<string, Agent[]>()
   for (const a of agents.value) {
     const list = m.get(a.role) || []
@@ -70,22 +60,15 @@ onMounted(fetchAgents)
     <div v-else class="team-groups">
       <n-card v-for="[role, list] in groups" :key="role" :title="`${roleInfo(role).emoji} ${roleInfo(role).name} (${list.length})`" :bordered="false" class="team-card">
         <div class="members">
-          <div v-for="agent in list" :key="agent.id" class="member">
-            <CatAvatar :emoji="roleInfo(role).emoji" :name="agent.id" :status="(agent.status as any) || 'idle'" size="small" />
+          <div v-for="agent in list" :key="agent.id ?? agent.role" class="member">
+            <CatAvatar :emoji="roleInfo(role).emoji" :name="agent.id ?? agent.role" :status="(agent.status as any) || 'idle'" size="small" />
             <div class="member-info">
-              <div class="member-id">{{ agent.id.slice(0, 14) }}</div>
-              <div class="member-meta">
-                <n-tag size="tiny" round>Lv{{ (agent as any).level ?? 1 }}</n-tag>
-                <span class="xp-text">{{ (agent as any).xp ?? 0 }} / {{ xpForNext((agent as any).level ?? 1) }} XP</span>
-              </div>
-              <n-progress
-                :percentage="Math.min(100, (((agent as any).xp ?? 0) - xpForCurrent((agent as any).level ?? 1)) * 100 / Math.max(1, xpForNext((agent as any).level ?? 1) - xpForCurrent((agent as any).level ?? 1)))"
-                :show-indicator="false"
-                :height="4"
-                color="#f5a623"
-                rail-color="var(--cc-border)"
-              />
+              <div class="member-id">{{ (agent.id ?? agent.role).slice(0, 14) }}</div>
+              <XpBadge :level="agent.level ?? 1" :xp="agent.xp ?? 0" />
               <div v-if="agent.current_task" class="current">🔧 #{{ agent.current_task }}</div>
+              <n-tag v-if="(agent.restart_count ?? 0) > 0" size="tiny" type="warning" style="margin-top: 4px">
+                重启 {{ agent.restart_count }} 次
+              </n-tag>
             </div>
           </div>
         </div>
