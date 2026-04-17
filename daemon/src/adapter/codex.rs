@@ -115,7 +115,7 @@ impl AgentAdapter for CodexAdapter {
         })
     }
 
-    async fn send_task(&self, handle: &AgentHandle, task_description: &str) -> Result<()> {
+    async fn send_task(&self, handle: &AgentHandle, _task_description: &str) -> Result<()> {
         tracing::info!("Sending task to Codex Agent {}", handle.agent_id);
         // Codex 使用一次性执行模式，任务在 spawn 时已传入
         Ok(())

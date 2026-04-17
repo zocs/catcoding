@@ -1,7 +1,6 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
 
 /// 会话归档
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,7 +53,7 @@ impl L4Sessions {
         for entry in fs::read_dir(&self.sessions_dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "json") {
+            if path.extension().is_some_and(|e| e == "json") {
                 if let Ok(content) = fs::read_to_string(&path) {
                     if let Ok(session) = serde_json::from_str::<SessionArchive>(&content) {
                         if session.task_summary.contains(keyword)
@@ -76,7 +75,7 @@ impl L4Sessions {
             .map(|entries| {
                 entries
                     .filter_map(|e| e.ok())
-                    .filter(|e| e.path().extension().map_or(false, |ext| ext == "json"))
+                    .filter(|e| e.path().extension().is_some_and(|ext| ext == "json"))
                     .count()
             })
             .unwrap_or(0)
@@ -90,7 +89,7 @@ impl L4Sessions {
         for entry in fs::read_dir(&self.sessions_dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "json") {
+            if path.extension().is_some_and(|e| e == "json") {
                 if let Ok(content) = fs::read_to_string(&path) {
                     if let Ok(session) = serde_json::from_str::<SessionArchive>(&content) {
                         if let Ok(completed) =

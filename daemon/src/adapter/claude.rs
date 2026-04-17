@@ -2,8 +2,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::process::Stdio;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command};
+use tokio::process::Command;
 
 use super::{AgentAdapter, AgentContext, AgentHandle, AgentOutput, HealthStatus};
 
@@ -118,7 +117,7 @@ impl AgentAdapter for ClaudeCodeAdapter {
         })
     }
 
-    async fn send_task(&self, handle: &AgentHandle, task_description: &str) -> Result<()> {
+    async fn send_task(&self, handle: &AgentHandle, _task_description: &str) -> Result<()> {
         tracing::info!("Sending task to Claude Code Agent {}", handle.agent_id);
         // Claude Code 使用一次性执行模式，任务在 spawn 时已传入
         // 这里可以实现重试或更新任务的逻辑

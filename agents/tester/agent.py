@@ -11,20 +11,20 @@
 """
 
 import asyncio
-import json
 import os
 import subprocess
 import sys
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from dataclasses import dataclass, field
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'base'))
-from agent import BaseAgent, AgentMessage, MessageType, TaskStatus
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "base"))
+from agent import BaseAgent, AgentMessage
 
 
 @dataclass
 class TestResult:
     """测试结果"""
+
     name: str
     status: str  # "passed", "failed", "skipped", "error"
     duration_ms: float
@@ -35,6 +35,7 @@ class TestResult:
 @dataclass
 class TestSuite:
     """测试套件"""
+
     name: str
     total: int
     passed: int
@@ -70,7 +71,9 @@ class TestAgent(BaseAgent):
         summary_lower = summary.lower()
         if "写" in summary_lower or "编写" in summary_lower or "write" in summary_lower:
             return "write"
-        elif "运行" in summary_lower or "执行" in summary_lower or "run" in summary_lower:
+        elif (
+            "运行" in summary_lower or "执行" in summary_lower or "run" in summary_lower
+        ):
             return "run"
         elif "覆盖" in summary_lower or "coverage" in summary_lower:
             return "coverage"
@@ -100,8 +103,11 @@ class TestAgent(BaseAgent):
                 self._log(f"📝 生成测试: {test_file}")
 
         if test_files:
-            self._send_result(msg.task_id, "completed",
-                f"生成 {len(test_files)} 个测试文件: {', '.join(test_files)}")
+            self._send_result(
+                msg.task_id,
+                "completed",
+                f"生成 {len(test_files)} 个测试文件: {', '.join(test_files)}",
+            )
         else:
             self._send_result(msg.task_id, "failed", "未能生成测试文件")
 
@@ -117,7 +123,7 @@ class TestAgent(BaseAgent):
         if ext == ".py":
             test_file = os.path.join(dir_name, f"test_{name_without_ext}.py")
             test_content = self._generate_python_test(source_file, name_without_ext)
-            with open(test_file, 'w') as f:
+            with open(test_file, "w") as f:
                 f.write(test_content)
             return test_file
 
@@ -127,7 +133,7 @@ class TestAgent(BaseAgent):
             os.makedirs(test_dir, exist_ok=True)
             test_file = os.path.join(test_dir, f"test_{name_without_ext}.rs")
             test_content = self._generate_rust_test(source_file, name_without_ext)
-            with open(test_file, 'w') as f:
+            with open(test_file, "w") as f:
                 f.write(test_content)
             return test_file
 
@@ -136,13 +142,14 @@ class TestAgent(BaseAgent):
     def _generate_python_test(self, source_file: str, module_name: str) -> str:
         """生成 Python 测试文件"""
         # 读取源文件，分析函数
-        with open(source_file, 'r') as f:
+        with open(source_file, "r") as f:
             content = f.read()
 
         # 提取函数名
         import re
-        functions = re.findall(r'def\s+(\w+)\s*\(', content)
-        functions = [f for f in functions if not f.startswith('_')]
+
+        functions = re.findall(r"def\s+(\w+)\s*\(", content)
+        functions = [f for f in functions if not f.startswith("_")]
 
         test_content = f'''"""
 测试 {module_name}
@@ -181,7 +188,7 @@ class Test{func.capitalize()}:
 
     def _generate_rust_test(self, source_file: str, module_name: str) -> str:
         """生成 Rust 测试文件"""
-        return f'''//! 测试 {module_name}
+        return f"""//! 测试 {module_name}
 //!
 //! 自动生成的测试用例，请根据实际情况修改
 
@@ -201,7 +208,7 @@ mod tests {{
         assert!(true);
     }}
 }}
-'''
+"""
 
     async def _run_tests(self, msg: AgentMessage):
         """运行测试"""
@@ -228,9 +235,11 @@ mod tests {{
         """检测项目类型"""
         if os.path.exists(os.path.join(self.workdir, "Cargo.toml")):
             return "rust"
-        elif os.path.exists(os.path.join(self.workdir, "pyproject.toml")) or \
-             os.path.exists(os.path.join(self.workdir, "setup.py")) or \
-             os.path.exists(os.path.join(self.workdir, "requirements.txt")):
+        elif (
+            os.path.exists(os.path.join(self.workdir, "pyproject.toml"))
+            or os.path.exists(os.path.join(self.workdir, "setup.py"))
+            or os.path.exists(os.path.join(self.workdir, "requirements.txt"))
+        ):
             return "python"
         elif os.path.exists(os.path.join(self.workdir, "package.json")):
             return "node"
@@ -246,7 +255,9 @@ mod tests {{
         cmd = ["cargo", "test", "--verbose"]
         return await self._execute_test_command("Rust Tests", cmd, workdir=self.workdir)
 
-    async def _execute_test_command(self, name: str, cmd: List[str], workdir: str = None) -> TestSuite:
+    async def _execute_test_command(
+        self, name: str, cmd: List[str], workdir: str = None
+    ) -> TestSuite:
         """执行测试命令"""
         import time
 
@@ -287,7 +298,7 @@ mod tests {{
                 errors=1,
                 duration_ms=300000,
             )
-        except Exception as e:
+        except Exception:
             return TestSuite(
                 name=name,
                 total=0,
@@ -303,17 +314,17 @@ mod tests {{
         import re
 
         # pytest 格式
-        passed = len(re.findall(r'PASSED', output))
-        failed = len(re.findall(r'FAILED', output))
-        skipped = len(re.findall(r'SKIPPED', output))
-        errors = len(re.findall(r'ERROR', output))
+        passed = len(re.findall(r"PASSED", output))
+        failed = len(re.findall(r"FAILED", output))
+        skipped = len(re.findall(r"SKIPPED", output))
+        errors = len(re.findall(r"ERROR", output))
 
         # cargo test 格式
         if passed == 0 and failed == 0:
-            match = re.search(r'(\d+) passed', output)
+            match = re.search(r"(\d+) passed", output)
             if match:
                 passed = int(match.group(1))
-            match = re.search(r'(\d+) failed', output)
+            match = re.search(r"(\d+) failed", output)
             if match:
                 failed = int(match.group(1))
 
@@ -335,15 +346,22 @@ mod tests {{
             if result.returncode == 0:
                 # 提取覆盖率
                 import re
-                match = re.search(r'TOTAL\s+\d+\s+\d+\s+(\d+)%', result.stdout)
+
+                match = re.search(r"TOTAL\s+\d+\s+\d+\s+(\d+)%", result.stdout)
                 if match:
                     coverage = int(match.group(1))
-                    self._send_result(msg.task_id, "completed",
-                        f"覆盖率: {coverage}%\n\n{result.stdout}")
+                    self._send_result(
+                        msg.task_id,
+                        "completed",
+                        f"覆盖率: {coverage}%\n\n{result.stdout}",
+                    )
                     return
 
-            self._send_result(msg.task_id, "completed",
-                f"覆盖率分析结果:\n\n{result.stdout}\n{result.stderr}")
+            self._send_result(
+                msg.task_id,
+                "completed",
+                f"覆盖率分析结果:\n\n{result.stdout}\n{result.stderr}",
+            )
 
         except Exception as e:
             self._send_result(msg.task_id, "failed", f"覆盖率分析失败: {e}")
@@ -351,7 +369,11 @@ mod tests {{
     def _generate_report(self, suite: TestSuite) -> str:
         """生成测试报告"""
         emoji = "✅" if suite.failed == 0 and suite.errors == 0 else "❌"
-        duration = f"{suite.duration_ms:.0f}ms" if suite.duration_ms < 1000 else f"{suite.duration_ms/1000:.1f}s"
+        duration = (
+            f"{suite.duration_ms:.0f}ms"
+            if suite.duration_ms < 1000
+            else f"{suite.duration_ms / 1000:.1f}s"
+        )
 
         report = f"""
 🐱 阿比西尼亚猫测试报告

@@ -65,7 +65,7 @@ const logsContainer = ref<HTMLElement | null>(null)
 let refreshTimer: ReturnType<typeof setInterval> | null = null
 
 const levelOptions = [
-  { label: 'All', value: null },
+  { label: 'All', value: '' },
   { label: 'ERROR', value: 'ERROR' },
   { label: 'WARN', value: 'WARN' },
   { label: 'INFO', value: 'INFO' },

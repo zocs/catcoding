@@ -2,7 +2,6 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
 
 /// Skill — 结晶的执行路径
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -112,7 +111,7 @@ impl L3Skills {
         for entry in fs::read_dir(&self.skills_dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.extension().map_or(false, |e| e == "json") {
+            if path.extension().is_some_and(|e| e == "json") {
                 if let Ok(content) = fs::read_to_string(&path) {
                     if let Ok(skill) = serde_json::from_str::<Skill>(&content) {
                         self.skills.insert(skill.name.clone(), skill);

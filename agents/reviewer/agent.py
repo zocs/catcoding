@@ -15,29 +15,30 @@ Bug 分级（老鼠系统）：
 """
 
 import asyncio
-import json
 import os
 import re
 import sys
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, field, asdict
+from typing import List
+from dataclasses import dataclass
 from enum import Enum
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'base'))
-from agent import BaseAgent, AgentMessage, MessageType, TaskStatus
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "base"))
+from agent import BaseAgent, AgentMessage
 
 
 class BugSeverity(Enum):
     """Bug 严重程度"""
-    MOUSE = "mouse"      # 🐭 小老鼠
-    RAT = "rat"          # 🐀 大老鼠
-    BAT = "bat"          # 🦇 蝙蝠
-    DRAGON = "dragon"    # 🐉 恶龙
+
+    MOUSE = "mouse"  # 🐭 小老鼠
+    RAT = "rat"  # 🐀 大老鼠
+    BAT = "bat"  # 🦇 蝙蝠
+    DRAGON = "dragon"  # 🐉 恶龙
 
 
 @dataclass
 class Bug:
     """发现的 Bug"""
+
     file: str
     line: int
     severity: BugSeverity
@@ -49,6 +50,7 @@ class Bug:
 @dataclass
 class ReviewResult:
     """审查结果"""
+
     file_path: str
     total_lines: int
     bugs_found: List[Bug]
@@ -148,8 +150,8 @@ class ReviewAgent(BaseAgent):
         """从摘要中提取文件路径"""
         # 匹配常见文件路径模式
         patterns = [
-            r'[a-zA-Z0-9_/\\\-]+\.(py|rs|js|ts|vue|json|yaml|yml|toml)',
-            r'src/[a-zA-Z0-9_/\\\-]+',
+            r"[a-zA-Z0-9_/\\\-]+\.(py|rs|js|ts|vue|json|yaml|yml|toml)",
+            r"src/[a-zA-Z0-9_/\\\-]+",
         ]
         files = []
         for pattern in patterns:
@@ -159,9 +161,9 @@ class ReviewAgent(BaseAgent):
 
     def _review_file(self, file_path: str) -> ReviewResult:
         """审查单个文件"""
-        with open(file_path, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
-            lines = content.split('\n')
+            lines = content.split("\n")
 
         bugs = []
 
@@ -170,14 +172,16 @@ class ReviewAgent(BaseAgent):
             if rule["pattern"]:
                 for i, line in enumerate(lines, 1):
                     if re.search(rule["pattern"], line):
-                        bugs.append(Bug(
-                            file=file_path,
-                            line=i,
-                            severity=rule["severity"],
-                            category=rule_name,
-                            description=rule["message"],
-                            suggestion=self._get_suggestion(rule_name, line),
-                        ))
+                        bugs.append(
+                            Bug(
+                                file=file_path,
+                                line=i,
+                                severity=rule["severity"],
+                                category=rule_name,
+                                description=rule["message"],
+                                suggestion=self._get_suggestion(rule_name, line),
+                            )
+                        )
 
         # 检测长函数
         bugs.extend(self._check_long_functions(file_path, lines))
@@ -186,7 +190,9 @@ class ReviewAgent(BaseAgent):
         quality_score = self._calculate_quality_score(len(lines), bugs)
 
         # 判断是否通过
-        critical_bugs = [b for b in bugs if b.severity in (BugSeverity.BAT, BugSeverity.DRAGON)]
+        critical_bugs = [
+            b for b in bugs if b.severity in (BugSeverity.BAT, BugSeverity.DRAGON)
+        ]
         passed = len(critical_bugs) == 0 and quality_score >= 60
 
         # 生成摘要
@@ -206,39 +212,41 @@ class ReviewAgent(BaseAgent):
         bugs = []
         func_start = None
         func_name = None
-        indent_level = 0
 
         for i, line in enumerate(lines, 1):
             # 检测函数定义
-            match = re.match(r'^(\s*)def\s+(\w+)\s*\(', line)
+            match = re.match(r"^(\s*)def\s+(\w+)\s*\(", line)
             if match:
                 if func_start and func_name:
                     length = i - func_start
                     if length > 50:
-                        bugs.append(Bug(
-                            file=file_path,
-                            line=func_start,
-                            severity=BugSeverity.RAT,
-                            category="long_function",
-                            description=f"函数 {func_name} 过长 ({length} 行)",
-                            suggestion=f"考虑将 {func_name} 拆分为更小的函数",
-                        ))
+                        bugs.append(
+                            Bug(
+                                file=file_path,
+                                line=func_start,
+                                severity=BugSeverity.RAT,
+                                category="long_function",
+                                description=f"函数 {func_name} 过长 ({length} 行)",
+                                suggestion=f"考虑将 {func_name} 拆分为更小的函数",
+                            )
+                        )
                 func_start = i
                 func_name = match.group(2)
-                indent_level = len(match.group(1))
 
         # 检查最后一个函数
         if func_start and func_name:
             length = len(lines) - func_start
             if length > 50:
-                bugs.append(Bug(
-                    file=file_path,
-                    line=func_start,
-                    severity=BugSeverity.RAT,
-                    category="long_function",
-                    description=f"函数 {func_name} 过长 ({length} 行)",
-                    suggestion=f"考虑将 {func_name} 拆分为更小的函数",
-                ))
+                bugs.append(
+                    Bug(
+                        file=file_path,
+                        line=func_start,
+                        severity=BugSeverity.RAT,
+                        category="long_function",
+                        description=f"函数 {func_name} 过长 ({length} 行)",
+                        suggestion=f"考虑将 {func_name} 拆分为更小的函数",
+                    )
+                )
 
         return bugs
 
@@ -272,13 +280,14 @@ class ReviewAgent(BaseAgent):
         total_deduction = sum(deductions.get(b.severity, 1.0) for b in bugs)
 
         # 每100行允许的问题数
-        allowed_per_100 = 5
         normalized_deduction = total_deduction / (total_lines / 100)
 
         score = max(0, 100 - normalized_deduction)
         return round(score, 1)
 
-    def _generate_file_summary(self, file_path: str, bugs: List[Bug], score: float, passed: bool) -> str:
+    def _generate_file_summary(
+        self, file_path: str, bugs: List[Bug], score: float, passed: bool
+    ) -> str:
         """生成文件审查摘要"""
         emoji = "✅" if passed else "❌"
         mouse_count = sum(1 for b in bugs if b.severity == BugSeverity.MOUSE)
@@ -293,7 +302,11 @@ class ReviewAgent(BaseAgent):
         total_files = len(results)
         passed_files = sum(1 for r in results if r.passed)
         total_bugs = sum(len(r.bugs_found) for r in results)
-        avg_score = sum(r.quality_score for r in results) / total_files if total_files > 0 else 0
+        avg_score = (
+            sum(r.quality_score for r in results) / total_files
+            if total_files > 0
+            else 0
+        )
 
         report = f"""
 🐱 玄猫代码审查报告
@@ -313,13 +326,19 @@ class ReviewAgent(BaseAgent):
         serious_bugs = []
         for result in results:
             for bug in result.bugs_found:
-                if bug.severity in (BugSeverity.RAT, BugSeverity.BAT, BugSeverity.DRAGON):
+                if bug.severity in (
+                    BugSeverity.RAT,
+                    BugSeverity.BAT,
+                    BugSeverity.DRAGON,
+                ):
                     serious_bugs.append(bug)
 
         if serious_bugs:
             report += "\n🔴 严重问题:\n"
             for bug in serious_bugs[:5]:  # 最多显示5个
-                emoji = {"rat": "🐀", "bat": "🦇", "dragon": "🐉"}.get(bug.severity.value, "❓")
+                emoji = {"rat": "🐀", "bat": "🦇", "dragon": "🐉"}.get(
+                    bug.severity.value, "❓"
+                )
                 report += f"  {emoji} {bug.file}:{bug.line} — {bug.description}\n"
                 report += f"     💡 建议: {bug.suggestion}\n"
 

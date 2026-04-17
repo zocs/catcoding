@@ -223,7 +223,7 @@ impl Watchdog {
                 return (RecoveryAction::Restart, format!("Process {} exited", pid));
             }
 
-            if proc_info.memory_kb as u64 > self.config.max_memory_mb * 1024 {
+            if proc_info.memory_kb > self.config.max_memory_mb * 1024 {
                 return (
                     RecoveryAction::Restart,
                     format!(
@@ -252,7 +252,10 @@ impl Watchdog {
                 );
             }
 
-            (RecoveryAction::Resume, "Process healthy, resuming context".to_string())
+            (
+                RecoveryAction::Resume,
+                "Process healthy, resuming context".to_string(),
+            )
         } else {
             (RecoveryAction::Restart, "No PID info".to_string())
         }
@@ -331,7 +334,10 @@ impl Watchdog {
                     results.push((
                         agent_id.clone(),
                         RecoveryAction::Restart,
-                        format!("Heartbeat timeout {}s > {}s", elapsed, self.config.heartbeat_timeout),
+                        format!(
+                            "Heartbeat timeout {}s > {}s",
+                            elapsed, self.config.heartbeat_timeout
+                        ),
                     ));
                 }
             } else if elapsed > self.config.heartbeat_timeout / 2 {

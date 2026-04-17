@@ -59,7 +59,10 @@ impl ProgressiveLoader {
             }
         }
 
-        tracing::info!("Progressive loader: loaded {} scene indexes", self.index.len());
+        tracing::info!(
+            "Progressive loader: loaded {} scene indexes",
+            self.index.len()
+        );
         Ok(())
     }
 

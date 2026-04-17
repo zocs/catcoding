@@ -1,8 +1,12 @@
 """🐱 橘猫 — 前端开发 Agent"""
+
 import asyncio
-import sys, os
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'base'))
-from agent import BaseAgent, AgentMessage
+import sys
+import os
+
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "base"))
+from agent import BaseAgent
+
 
 class FrontendAgent(BaseAgent):
     def __init__(self, agent_id, project_id, workdir="."):
@@ -16,6 +20,7 @@ class FrontendAgent(BaseAgent):
             self._send_progress(msg.task_id, i * 20, step)
         self._log("✅ 前端任务完成")
 
+
 async def main():
     agent = FrontendAgent(
         os.environ.get("AGENT_ID", "frontend-01"),
@@ -24,6 +29,7 @@ async def main():
     )
     print(f"🐱 橘猫 Agent 启动: {agent.agent_id}", flush=True)
     await agent.run()
+
 
 if __name__ == "__main__":
     asyncio.run(main())

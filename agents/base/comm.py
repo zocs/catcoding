@@ -4,14 +4,13 @@ CatCoding Agent NATS 通信库
 通过 NATS 与 Daemon 通信（备选方案，stdin/stdout 是主要方式）
 """
 
-import asyncio
 import json
-import os
 from typing import Optional, Callable, Awaitable
 
 try:
     import nats
     from nats.aio.client import Client as NATS
+
     HAS_NATS = True
 except ImportError:
     HAS_NATS = False

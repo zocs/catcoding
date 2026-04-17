@@ -9,7 +9,6 @@ use rustyline::history::DefaultHistory;
 use rustyline::validate::Validator;
 use rustyline::{Config, Editor, Helper};
 use serde::Deserialize;
-use std::borrow::Cow;
 
 const DEFAULT_DAEMON: &str = "http://127.0.0.1:19800";
 
@@ -45,17 +44,13 @@ enum Commands {
     Status,
 
     /// 📨 Send command to team
-    Command {
-        message: Vec<String>,
-    },
+    Command { message: Vec<String> },
 
     /// 🐭 List bugs
     Mice,
 
     /// 🐟 Feed cat agents
-    Feed {
-        agent: Option<String>,
-    },
+    Feed { agent: Option<String> },
 
     /// 📜 View logs
     Logs {
@@ -212,7 +207,10 @@ fn run_shell(daemon: &str) -> Result<()> {
         let _ = rl.load_history(path);
     }
 
-    println!("{}", "🐱 CatCoding Interactive Shell".bright_yellow().bold());
+    println!(
+        "{}",
+        "🐱 CatCoding Interactive Shell".bright_yellow().bold()
+    );
     println!(
         "  Type {} for commands, {} to exit",
         "help".bright_green(),
@@ -312,14 +310,17 @@ fn run_shell(daemon: &str) -> Result<()> {
 
 fn print_help() {
     println!("{}", "🐱 Available commands:".bright_yellow().bold());
-    println!("  {:<16} {}", "status".bright_green(), "Show agent & task status");
-    println!("  {:<16} {}", "mice".bright_green(), "List all bugs");
-    println!("  {:<16} {}", "feed [agent]".bright_green(), "Feed cat agents");
-    println!("  {:<16} {}", "command <msg>".bright_green(), "Send command to team");
-    println!("  {:<16} {}", "logs".bright_green(), "Show recent logs");
-    println!("  {:<16} {}", "health".bright_green(), "Check daemon health");
-    println!("  {:<16} {}", "help".bright_green(), "Show this help");
-    println!("  {:<16} {}", "exit".bright_red(), "Exit shell");
+    println!("  {:<16} Show agent & task status", "status".bright_green());
+    println!("  {:<16} List all bugs", "mice".bright_green());
+    println!("  {:<16} Feed cat agents", "feed [agent]".bright_green());
+    println!(
+        "  {:<16} Send command to team",
+        "command <msg>".bright_green()
+    );
+    println!("  {:<16} Show recent logs", "logs".bright_green());
+    println!("  {:<16} Check daemon health", "health".bright_green());
+    println!("  {:<16} Show this help", "help".bright_green());
+    println!("  {:<16} Exit shell", "exit".bright_red());
     println!();
     println!(
         "  {} Up/Down: history | Tab: autocomplete",
@@ -426,11 +427,7 @@ fn cmd_status(daemon: &str) -> Result<()> {
     check_daemon(daemon)?;
 
     let health: HealthResp = api_get(daemon, "/api/health")?;
-    println!(
-        "● Daemon {} — {}",
-        health.version,
-        "online".bright_green()
-    );
+    println!("● Daemon {} — {}", health.version, "online".bright_green());
     println!();
 
     let agents: AgentsResp = api_get(daemon, "/api/agents")?;
@@ -486,10 +483,7 @@ fn cmd_mice(daemon: &str) -> Result<()> {
     if bugs.is_empty() {
         println!("🐭 No bugs found! 🎉");
     } else {
-        println!(
-            "🐭 {} bug(s):",
-            bugs.len().to_string().bright_red().bold()
-        );
+        println!("🐭 {} bug(s):", bugs.len().to_string().bright_red().bold());
         for t in &bugs {
             let id = &t.id[..8.min(t.id.len())];
             println!("  🐛 [{}] {} — {}", id.bright_red(), t.status, t.summary);
@@ -509,7 +503,11 @@ fn cmd_feed(daemon: &str, agent: Option<String>) -> Result<()> {
 
     match agent {
         Some(name) => {
-            if let Some(a) = agents.agents.iter().find(|a| a.name == name || a.id == name) {
+            if let Some(a) = agents
+                .agents
+                .iter()
+                .find(|a| a.name == name || a.id == name)
+            {
                 println!("🐟 Feeding {}...", a.name.bright_yellow());
             } else {
                 println!("❌ Agent not found: {}", name);

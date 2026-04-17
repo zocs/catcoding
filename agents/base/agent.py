@@ -7,14 +7,14 @@ CatCoding Python Agent SDK
 import asyncio
 import json
 import sys
-import time
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 
 
 class TaskStatus(str, Enum):
     """任务状态（8 态状态机）"""
+
     PENDING = "pending"
     BLOCKED = "blocked"
     READY = "ready"
@@ -27,6 +27,7 @@ class TaskStatus(str, Enum):
 
 class MessageType(str, Enum):
     """消息类型"""
+
     TASK_RESULT = "task_result"
     STATUS_UPDATE = "status_update"
     REQUEST = "request"
@@ -41,10 +42,11 @@ class TaskDoD:
     每个任务必须在分配时指定 DoD，Agent 执行完毕后自动验证。
     原则：Never "figure out what to do" — always "do X, output Y, verify Z"
     """
-    output_path: str = ""              # 输出文件路径（必须写入指定位置）
-    output_format: str = ""            # 输出格式描述（如 "JSON with fields: ..."）
-    verify_command: str = ""           # 验证命令（exit code 0 = success）
-    silent_on_success: bool = False    # 成功时静默（cron 任务返回 HEARTBEAT_OK）
+
+    output_path: str = ""  # 输出文件路径（必须写入指定位置）
+    output_format: str = ""  # 输出格式描述（如 "JSON with fields: ..."）
+    verify_command: str = ""  # 验证命令（exit code 0 = success）
+    silent_on_success: bool = False  # 成功时静默（cron 任务返回 HEARTBEAT_OK）
     required_artifacts: List[str] = field(default_factory=list)  # 必须产出的文件列表
 
     def validate(self, workdir: str) -> tuple[bool, str]:
@@ -53,26 +55,42 @@ class TaskDoD:
 
         # 1. 检查输出文件是否存在
         if self.output_path:
-            full_path = os.path.join(workdir, self.output_path) if not os.path.isabs(self.output_path) else self.output_path
+            full_path = (
+                os.path.join(workdir, self.output_path)
+                if not os.path.isabs(self.output_path)
+                else self.output_path
+            )
             if not os.path.exists(full_path):
                 return False, f"输出文件不存在: {self.output_path}"
 
         # 2. 检查必需产出物
         for artifact in self.required_artifacts:
-            full = os.path.join(workdir, artifact) if not os.path.isabs(artifact) else artifact
+            full = (
+                os.path.join(workdir, artifact)
+                if not os.path.isabs(artifact)
+                else artifact
+            )
             if not os.path.exists(full):
                 return False, f"缺少产出物: {artifact}"
 
         # 3. 执行验证命令
         if self.verify_command:
             import subprocess
+
             try:
                 result = subprocess.run(
-                    self.verify_command, shell=True, cwd=workdir,
-                    capture_output=True, text=True, timeout=30
+                    self.verify_command,
+                    shell=True,
+                    cwd=workdir,
+                    capture_output=True,
+                    text=True,
+                    timeout=30,
                 )
                 if result.returncode != 0:
-                    return False, f"验证失败 (exit {result.returncode}): {result.stderr[:200]}"
+                    return (
+                        False,
+                        f"验证失败 (exit {result.returncode}): {result.stderr[:200]}",
+                    )
             except subprocess.TimeoutExpired:
                 return False, "验证命令超时 (>30s)"
 
@@ -101,6 +119,7 @@ class TaskDoD:
 @dataclass
 class AgentMessage:
     """Agent 间通信消息"""
+
     msg_id: str = ""
     type: str = ""
     from_agent: str = ""
@@ -117,6 +136,7 @@ class AgentMessage:
     def to_json(self) -> str:
         import uuid
         from datetime import datetime, timezone
+
         if not self.msg_id:
             self.msg_id = str(uuid.uuid4())
         if not self.timestamp:
@@ -169,8 +189,6 @@ class BaseAgent:
 
     async def run(self):
         """主循环：读取 stdin，处理消息，发送心跳"""
-        import uuid
-        from datetime import datetime, timezone
 
         # 启动心跳任务
         heartbeat_task = asyncio.create_task(self._heartbeat_loop())
@@ -179,7 +197,9 @@ class BaseAgent:
             # 读取 stdin（非阻塞）
             reader = asyncio.StreamReader()
             protocol = asyncio.StreamReaderProtocol(reader)
-            await asyncio.get_event_loop().connect_read_pipe(lambda: protocol, sys.stdin.buffer)
+            await asyncio.get_event_loop().connect_read_pipe(
+                lambda: protocol, sys.stdin.buffer
+            )
 
             while self.running:
                 try:
@@ -235,7 +255,9 @@ class BaseAgent:
                 details = json.loads(msg.details)
                 if "dod" in details:
                     dod = TaskDoD.from_dict(details["dod"])
-                    self._log(f"  📝 DoD: output={dod.output_path}, verify={dod.verify_command or 'none'}")
+                    self._log(
+                        f"  📝 DoD: output={dod.output_path}, verify={dod.verify_command or 'none'}"
+                    )
             except (json.JSONDecodeError, KeyError):
                 pass
 
@@ -257,10 +279,10 @@ class BaseAgent:
                         self._send_result(msg.task_id, "completed", "HEARTBEAT_OK")
                     else:
                         self._send_result(msg.task_id, "completed", "任务完成 (DoD ✓)")
-                    self._log(f"  ✅ DoD 验证通过")
+                    self._log("  ✅ DoD 验证通过")
             else:
                 self._send_result(msg.task_id, "completed", "任务完成")
-                self._log(f"  ⚠️ 无 DoD — 无法客观验证完成状态")
+                self._log("  ⚠️ 无 DoD — 无法客观验证完成状态")
         except Exception as e:
             self._send_result(msg.task_id, "failed", f"任务失败: {e}")
 
@@ -303,5 +325,6 @@ class BaseAgent:
     def _log(self, message: str):
         """日志输出"""
         from datetime import datetime, timezone
+
         ts = datetime.now(timezone.utc).strftime("%H:%M:%S")
         print(f"[{ts}] 🐱 [{self.agent_id}] {message}", file=sys.stderr, flush=True)

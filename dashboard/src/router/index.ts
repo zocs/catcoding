@@ -45,6 +45,11 @@ const router = createRouter({
           path: 'board',
           name: 'board',
           component: () => import('../views/Board.vue')
+        },
+        {
+          path: 'memory',
+          name: 'memory',
+          component: () => import('../views/Memory.vue')
         }
       ]
     }

@@ -149,6 +149,7 @@ async fn main() -> Result<()> {
         lifecycle_manager: lifecycle_manager.clone(),
         ws_tx: ws_tx.clone(),
         log_buffer: log_buffer.clone(),
+        memory_manager: memory_manager.clone(),
     });
 
     let host = std::env::var("API_HOST").unwrap_or_else(|_| "127.0.0.1".to_string());

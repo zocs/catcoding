@@ -1,6 +1,6 @@
+use chrono::Utc;
 use std::collections::VecDeque;
 use std::sync::Mutex;
-use chrono::Utc;
 use tracing_subscriber::field::Visit;
 
 /// Ring buffer for capturing recent log entries

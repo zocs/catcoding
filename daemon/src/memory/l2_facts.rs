@@ -74,7 +74,7 @@ impl L2Facts {
                     content.push_str(&format!("{}: {}\n", key, value));
                 }
             }
-            content.push_str("\n");
+            content.push('\n');
         }
 
         fs::write(&self.file_path, content)?;

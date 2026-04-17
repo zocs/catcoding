@@ -6,9 +6,7 @@ use anyhow::Result;
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
-pub use claude::{ClaudeCodeAdapter, ClaudeCodeConfig};
-pub use codex::{CodexAdapter, CodexConfig};
-pub use hermes::{AgentLifecycleManager, HermesAdapter, HermesConfig};
+pub use hermes::AgentLifecycleManager;
 
 /// Agent 上下文
 #[derive(Debug, Clone, Serialize, Deserialize)]

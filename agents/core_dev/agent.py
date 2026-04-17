@@ -9,7 +9,7 @@ import sys
 import os
 
 # 添加 base 模块路径
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'base'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "base"))
 
 from agent import BaseAgent, AgentMessage
 

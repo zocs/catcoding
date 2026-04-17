@@ -40,7 +40,10 @@ def load_agent_class(role: str):
 
     # 尝试导入
     try:
-        module = __import__(module_path.replace("/", ".").replace(".agent", ".agent"), fromlist=[class_name])
+        module = __import__(
+            module_path.replace("/", ".").replace(".agent", ".agent"),
+            fromlist=[class_name],
+        )
         return getattr(module, class_name)
     except (ImportError, ModuleNotFoundError):
         # fallback: 用 BaseAgent

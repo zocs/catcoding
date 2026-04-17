@@ -48,7 +48,10 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    pub fn new(config: SchedulerConfig, lifecycle_manager: Arc<Mutex<AgentLifecycleManager>>) -> Self {
+    pub fn new(
+        config: SchedulerConfig,
+        lifecycle_manager: Arc<Mutex<AgentLifecycleManager>>,
+    ) -> Self {
         Self {
             config,
             pending_queue: Arc::new(RwLock::new(Vec::new())),
@@ -111,7 +114,7 @@ impl Scheduler {
         }
 
         // 没有空闲 agent → 自动 spawn
-        let agent_id = format!("{}-{}", role, uuid::Uuid::new_v4().to_string()[..8].to_string());
+        let agent_id = format!("{}-{}", role, &uuid::Uuid::new_v4().to_string()[..8]);
         tracing::info!(
             "🐱 Auto-spawning Agent: role={}, agent_id={}",
             role,
@@ -215,7 +218,10 @@ impl Scheduler {
         state_manager: Arc<crate::state::StateManager>,
         project_id: String,
     ) {
-        tracing::info!("Scheduler started, check interval {}s", self.config.check_interval);
+        tracing::info!(
+            "Scheduler started, check interval {}s",
+            self.config.check_interval
+        );
         let mut interval =
             tokio::time::interval(std::time::Duration::from_secs(self.config.check_interval));
 
@@ -231,9 +237,7 @@ impl Scheduler {
 
                 for task in queue.iter() {
                     let role = task.assigned_to.as_deref().unwrap_or("core_dev");
-                    let has_idle = agents
-                        .values()
-                        .any(|a| a.is_idle && a.role == role);
+                    let has_idle = agents.values().any(|a| a.is_idle && a.role == role);
                     if !has_idle {
                         roles_needed.insert(role.to_string());
                     }
@@ -263,11 +267,7 @@ impl Scheduler {
                                 tracing::info!("Task sent to Agent {}", agent_id);
                                 // 更新任务状态为 active
                                 let _ = state_manager
-                                    .update_task_status(
-                                        &project_id,
-                                        &task.id,
-                                        TaskStatus::Active,
-                                    )
+                                    .update_task_status(&project_id, &task.id, TaskStatus::Active)
                                     .await;
                             }
                             Err(e) => {
@@ -282,5 +282,53 @@ impl Scheduler {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::Task;
+
+    #[test]
+    fn test_scheduler_config_default() {
+        let config = SchedulerConfig::default();
+        assert_eq!(config.check_interval, 2);
+        assert_eq!(config.max_concurrent_tasks, 10);
+    }
+
+    #[test]
+    fn test_check_dependencies_empty() {
+        let task = Task::new("Test Task", "Description", None);
+        let completed = std::collections::HashSet::new();
+        assert!(Scheduler::check_dependencies(&task, &completed));
+    }
+
+    #[test]
+    fn test_check_dependencies_with_deps() {
+        let mut task = Task::new("Test Task", "Description", None);
+        task.depends_on = vec!["dep1".to_string(), "dep2".to_string()];
+
+        let mut completed = std::collections::HashSet::new();
+        completed.insert("dep1".to_string());
+
+        // 依赖不完整
+        assert!(!Scheduler::check_dependencies(&task, &completed));
+
+        // 添加第二个依赖
+        completed.insert("dep2".to_string());
+        assert!(Scheduler::check_dependencies(&task, &completed));
+    }
+
+    #[test]
+    fn test_agent_slot_creation() {
+        let slot = AgentSlot {
+            agent_id: "agent-123".to_string(),
+            role: "core_dev".to_string(),
+            is_idle: true,
+        };
+        assert_eq!(slot.agent_id, "agent-123");
+        assert_eq!(slot.role, "core_dev");
+        assert!(slot.is_idle);
     }
 }

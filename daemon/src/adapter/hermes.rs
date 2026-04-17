@@ -62,7 +62,10 @@ impl HermesAdapter {
             "--workdir".to_string(),
             context.working_dir.clone(),
         ];
-        (self.config.python_path.clone(), std::iter::once(runner).chain(args).collect())
+        (
+            self.config.python_path.clone(),
+            std::iter::once(runner).chain(args).collect(),
+        )
     }
 }
 
@@ -243,7 +246,7 @@ impl AgentAdapter for HermesAdapter {
     async fn health_check(&self, handle: &AgentHandle) -> Result<HealthStatus> {
         let running = self.running.lock().await;
         match running.get(&handle.agent_id) {
-            Some(agent) => {
+            Some(_agent) => {
                 // 检查进程是否还活着
                 let proc_path = format!("/proc/{}", handle.pid.unwrap_or(0));
                 if std::path::Path::new(&proc_path).exists() {

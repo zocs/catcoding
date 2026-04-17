@@ -65,7 +65,11 @@
         class="dashboard-content"
         :style="isMobile ? { paddingTop: '0' } : {}"
       >
-        <router-view />
+        <router-view v-slot="{ Component }">
+          <keep-alive>
+            <component :is="Component" />
+          </keep-alive>
+        </router-view>
       </n-layout-content>
     </n-layout>
   </n-layout>
@@ -86,7 +90,8 @@ import {
   TerminalOutline,
   CodeSlashOutline,
   GridOutline,
-  DocumentTextOutline
+  DocumentTextOutline,
+  HardwareChipOutline
 } from '@vicons/ionicons5'
 import LangSwitch from '../components/LangSwitch.vue'
 import ThemeSwitch from '../components/ThemeSwitch.vue'
@@ -120,6 +125,7 @@ const menuOptions = computed<MenuOption[]>(() => [
   { label: t('nav.gantt'), key: 'gantt', icon: renderIcon(BarChartOutline) },
   { label: t('nav.terminal'), key: 'terminal', icon: renderIcon(TerminalOutline) },
   { label: t('nav.commands'), key: 'commands', icon: renderIcon(CodeSlashOutline) },
+  { label: t('nav.memory'), key: 'memory', icon: renderIcon(HardwareChipOutline) },
   { label: t('nav.logs'), key: 'logs', icon: renderIcon(DocumentTextOutline) },
   { label: t('nav.board'), key: 'board', icon: renderIcon(GridOutline) },
 ])

@@ -13,9 +13,8 @@ use std::sync::Arc;
 use tokio::sync::broadcast;
 
 use crate::adapter::AgentLifecycleManager;
-use crate::cascade::CascadeHandler;
-use crate::rollback::RollbackManager;
 use crate::log_buffer::LogBuffer;
+use crate::memory::MemoryManager;
 use crate::scheduler::Scheduler;
 use crate::state::{StateManager, Task, TaskStatus};
 use crate::watchdog::Watchdog;
@@ -36,6 +35,8 @@ pub struct ApiState {
     pub ws_tx: broadcast::Sender<String>,
     /// Log ring buffer
     pub log_buffer: Arc<LogBuffer>,
+    /// L4 Memory system
+    pub memory_manager: Arc<MemoryManager>,
 }
 
 /// 命令请求
@@ -82,6 +83,8 @@ pub fn create_router(state: Arc<ApiState>) -> Router {
         .route("/api/command", post(execute_command))
         .route("/api/watchdog", get(watchdog_status))
         .route("/api/logs", get(list_logs))
+        .route("/api/memory/status", get(memory_status))
+        .route("/api/memory/search", get(memory_search))
         .route("/ws", get(ws_handler))
         .route("/dashboard", get(dashboard_index))
         .route("/dashboard/{*path}", get(dashboard_handler))
@@ -322,11 +325,65 @@ async fn dashboard_handler(Path(path): Path<String>) -> Response {
     }
 }
 
-/// WebSocket 升级处理
-async fn ws_handler(
-    ws: WebSocketUpgrade,
+/// Memory system status
+async fn memory_status(State(state): State<Arc<ApiState>>) -> impl IntoResponse {
+    let summary = state.memory_manager.status_summary();
+    Json(summary)
+}
+
+/// Search memory by keyword
+#[derive(Deserialize)]
+struct MemorySearchQuery {
+    q: Option<String>,
+}
+
+async fn memory_search(
     State(state): State<Arc<ApiState>>,
+    axum::extract::Query(query): axum::extract::Query<MemorySearchQuery>,
 ) -> impl IntoResponse {
+    let keyword = query.q.unwrap_or_default();
+    let mut results = Vec::new();
+
+    // Search L2 facts
+    if let Some(fact) = state.memory_manager.l2.get(&keyword) {
+        results.push(json!({
+            "layer": "L2",
+            "key": keyword,
+            "value": fact,
+        }));
+    }
+
+    // Search L3 skills
+    if let Some(skill) = state.memory_manager.l3.get(&keyword) {
+        results.push(json!({
+            "layer": "L3",
+            "key": keyword,
+            "value": skill.to_context(),
+        }));
+    }
+
+    // Search L4 sessions
+    if let Ok(sessions) = state.memory_manager.l4.search(&keyword) {
+        for s in sessions {
+            results.push(json!({
+                "layer": "L4",
+                "key": s.task_id,
+                "value": s.task_summary,
+                "outcome": s.outcome,
+                "completed_at": s.completed_at,
+            }));
+        }
+    }
+
+    Json(json!({
+        "query": keyword,
+        "results": results,
+        "count": results.len(),
+    }))
+}
+
+/// WebSocket 升级处理
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<ApiState>>) -> impl IntoResponse {
     ws.on_upgrade(|socket| ws_connection(socket, state))
 }
 

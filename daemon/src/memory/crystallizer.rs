@@ -120,7 +120,8 @@ impl SkillCrystallizer {
 
         for step in steps {
             let lower = step.to_lowercase();
-            if lower.contains("require") || lower.contains("need") || lower.contains("prerequisite") {
+            if lower.contains("require") || lower.contains("need") || lower.contains("prerequisite")
+            {
                 prereqs.push(step.clone());
             }
         }

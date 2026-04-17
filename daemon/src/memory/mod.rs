@@ -15,9 +15,8 @@ pub mod progressive_loader;
 pub use crystallizer::SkillCrystallizer;
 pub use l1_index::L1Index;
 pub use l2_facts::L2Facts;
-pub use l3_skills::{L3Skills, Skill};
+pub use l3_skills::L3Skills;
 pub use l4_sessions::L4Sessions;
-pub use progressive_loader::ProgressiveLoader;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -78,8 +77,7 @@ impl MemoryManager {
         // 先查 L1 索引
         if let Some(pointer) = self.l1.lookup(scene) {
             // 指向 L2 或 L3
-            if pointer.starts_with("L3:") {
-                let skill_name = &pointer[3..];
+            if let Some(skill_name) = pointer.strip_prefix("L3:") {
                 if let Some(skill) = self.l3.get(skill_name) {
                     return Some(skill.to_context());
                 }
@@ -124,7 +122,11 @@ impl MemoryManager {
         self.l1
             .add_mapping(&skill.trigger_scene, &format!("L3:{}", skill_name));
 
-        tracing::info!("Skill crystallized: {} (source task: {})", skill_name, task_id);
+        tracing::info!(
+            "Skill crystallized: {} (source task: {})",
+            skill_name,
+            task_id
+        );
         Ok(skill_name)
     }
 

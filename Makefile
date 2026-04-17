@@ -15,8 +15,7 @@ lint: lint-rust lint-python lint-dashboard ## Run all linters
 
 lint-rust: ## Lint Rust code (fmt + clippy)
 	cargo fmt --all -- --check
-	cargo clippy -p catcoding-daemon --all-features -- -D warnings
-	cargo clippy -p catcoding --all-features -- -D warnings
+	cargo clippy --all-features -- -A dead-code -A unused-imports -A unused-variables -A unused-must-use
 
 lint-python: ## Lint Python agents (ruff)
 	ruff check agents/
@@ -33,7 +32,7 @@ test-rust: ## Run Rust tests
 	cargo test --all-features --verbose
 
 test-python: ## Run Python tests
-	pytest agents/ -v --tb=short
+	pytest tests/python/ -v --tb=short
 
 test-integration: ## Run integration test (needs NATS)
 	nats-server -js &

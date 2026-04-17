@@ -224,7 +224,7 @@ impl CascadeHandler {
         &self,
         task_id: &str,
         new_status: &TaskStatus,
-        tasks: &mut Vec<Task>,
+        tasks: &mut [Task],
     ) -> Result<Vec<String>> {
         let mut affected = Vec::new();
         let graph = self.graph.read().await;

@@ -16,19 +16,19 @@ PM 决策原则（铁律）：
 """
 
 import asyncio
-import json
 import os
 import sys
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, field, asdict
+from typing import List, Dict
+from dataclasses import dataclass, field
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'base'))
-from agent import BaseAgent, AgentMessage, MessageType, TaskStatus
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "base"))
+from agent import BaseAgent, AgentMessage
 
 
 @dataclass
 class TaskPlan:
     """任务计划"""
+
     id: str
     title: str
     description: str
@@ -40,6 +40,7 @@ class TaskPlan:
 @dataclass
 class ProjectSummary:
     """项目摘要"""
+
     name: str
     total_tasks: int
     completed: int
@@ -71,8 +72,9 @@ class PMAgent(BaseAgent):
             self.tasks[task.id] = task
 
         # 返回任务计划
-        plan_json = json.dumps([asdict(t) for t in tasks], ensure_ascii=False)
-        self._send_result(msg.task_id, "completed", f"任务拆分完成: {len(tasks)} 个子任务")
+        self._send_result(
+            msg.task_id, "completed", f"任务拆分完成: {len(tasks)} 个子任务"
+        )
 
     async def _analyze_requirements(self, requirement: str) -> List[TaskPlan]:
         """分析需求，拆分任务"""

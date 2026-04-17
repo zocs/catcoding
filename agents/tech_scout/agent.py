@@ -18,20 +18,20 @@ PM 做决策时 → 狐狸自动搜集:
 """
 
 import asyncio
-import json
 import os
 import re
 import sys
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, field
+from typing import List, Dict
+from dataclasses import dataclass
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'base'))
-from agent import BaseAgent, AgentMessage, MessageType, TaskStatus
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "base"))
+from agent import BaseAgent, AgentMessage
 
 
 @dataclass
 class TechReport:
     """技术调研报告"""
+
     topic: str
     summary: str
     sources: List[str]
@@ -66,7 +66,11 @@ class TechScoutAgent(BaseAgent):
         summary_lower = summary.lower()
         if "趋势" in summary_lower or "trending" in summary_lower:
             return "trending"
-        elif "安全" in summary_lower or "漏洞" in summary_lower or "security" in summary_lower:
+        elif (
+            "安全" in summary_lower
+            or "漏洞" in summary_lower
+            or "security" in summary_lower
+        ):
             return "security"
         elif "文档" in summary_lower or "doc" in summary_lower:
             return "docs"
@@ -77,7 +81,7 @@ class TechScoutAgent(BaseAgent):
         self._log(f"🔍 技术调研: {msg.summary}")
 
         # 提取关键词
-        keywords = self._extract_keywords(msg.summary)
+        self._extract_keywords(msg.summary)
 
         # 模拟调研结果（实际应调用搜索 API）
         report = TechReport(
@@ -109,7 +113,7 @@ class TechScoutAgent(BaseAgent):
         """检查技术趋势"""
         self._log(f"📈 检查趋势: {msg.summary}")
 
-        report = f"""
+        report = """
 🦊 技术趋势报告
 
 📊 当前热门技术:
@@ -163,7 +167,7 @@ class TechScoutAgent(BaseAgent):
         report = f"""
 🦊 文档搜索报告
 
-🔍 搜索关键词: {', '.join(keywords)}
+🔍 搜索关键词: {", ".join(keywords)}
 
 📚 文档来源:
 - 官方文档: https://docs.rs (Rust)
@@ -180,8 +184,22 @@ class TechScoutAgent(BaseAgent):
     def _extract_keywords(self, text: str) -> List[str]:
         """提取关键词"""
         # 移除常见停用词
-        stop_words = {"的", "了", "是", "在", "和", "有", "这", "个", "我", "你", "他", "她", "它"}
-        words = re.findall(r'[\w]+', text)
+        stop_words = {
+            "的",
+            "了",
+            "是",
+            "在",
+            "和",
+            "有",
+            "这",
+            "个",
+            "我",
+            "你",
+            "他",
+            "她",
+            "它",
+        }
+        words = re.findall(r"[\w]+", text)
         keywords = [w for w in words if w not in stop_words and len(w) > 1]
         return list(set(keywords))[:10]
 
@@ -192,20 +210,20 @@ class TechScoutAgent(BaseAgent):
         # 检查 Cargo.toml
         cargo_toml = os.path.join(self.workdir, "Cargo.toml")
         if os.path.exists(cargo_toml):
-            with open(cargo_toml, 'r') as f:
+            with open(cargo_toml, "r") as f:
                 content = f.read()
                 # 简单提取依赖名
-                matches = re.findall(r'^(\w[\w-]*)\s*=', content, re.MULTILINE)
+                matches = re.findall(r"^(\w[\w-]*)\s*=", content, re.MULTILINE)
                 deps.extend(matches)
 
         # 检查 requirements.txt
         requirements = os.path.join(self.workdir, "requirements.txt")
         if os.path.exists(requirements):
-            with open(requirements, 'r') as f:
+            with open(requirements, "r") as f:
                 for line in f:
                     line = line.strip()
-                    if line and not line.startswith('#'):
-                        dep = re.split(r'[>=<]', line)[0].strip()
+                    if line and not line.startswith("#"):
+                        dep = re.split(r"[>=<]", line)[0].strip()
                         deps.append(dep)
 
         return deps
