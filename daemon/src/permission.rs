@@ -175,7 +175,7 @@ pub fn classify_bash_command(cmd: &str) -> PermissionLevel {
         let parts: Vec<&str> = cmd.split(|c: char| c.is_whitespace() || c == '|').collect();
         for part in &parts {
             for p in patterns {
-                if part == *p {
+                if *part == *p {
                     return true;
                 }
             }
