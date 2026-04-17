@@ -81,6 +81,7 @@ pub fn create_router(state: Arc<ApiState>) -> Router {
         .route("/api/tasks/{id}", get(get_task))
         .route("/api/tasks/{id}/status", post(update_task_status))
         .route("/api/command", post(execute_command))
+        .route("/api/permission/check", post(permission_check))
         .route("/api/watchdog", get(watchdog_status))
         .route("/api/logs", get(list_logs))
         .route("/api/memory/status", get(memory_status))
@@ -422,4 +423,26 @@ async fn ws_connection(socket: axum::extract::ws::WebSocket, state: Arc<ApiState
 
     send_task.abort();
     tracing::info!("WebSocket client disconnected");
+}
+
+/// 权限检查请求
+#[derive(Deserialize)]
+struct PermissionCheckRequest {
+    command: String,
+}
+
+/// 权限检查 API — 对 Bash 命令进行权限分级
+async fn permission_check(Json(req): Json<PermissionCheckRequest>) -> impl IntoResponse {
+    use crate::permission::{check_permission, classify_bash_command, PermissionConfig};
+
+    let config = PermissionConfig::default();
+    let level = classify_bash_command(&req.command);
+    let (allowed, _, reason) = check_permission(&req.command, &config);
+
+    Json(json!({
+        "command": req.command,
+        "level": level.to_string(),
+        "allowed": allowed,
+        "reason": reason,
+    }))
 }

@@ -315,6 +315,8 @@ impl Watchdog {
     }
 
     /// 检查所有 Agent 状态
+    ///
+    /// 三重检测：心跳超时 + 重启次数 + /proc 轮询
     pub async fn check_all(&self) -> Vec<(String, RecoveryAction, String)> {
         let agents = self.agents.read().await;
         let now = Utc::now();
@@ -323,6 +325,32 @@ impl Watchdog {
         for (agent_id, monitor) in agents.iter() {
             let elapsed = (now - monitor.last_heartbeat).num_seconds() as u64;
 
+            // 检测层3: /proc 轮询 — 兜底检测僵尸进程
+            if let Some(pid) = monitor.pid {
+                let proc_info = Self::check_proc(pid);
+                if !proc_info.alive {
+                    results.push((
+                        agent_id.clone(),
+                        RecoveryAction::Restart,
+                        format!("Process {} dead (zombie/exit)", pid),
+                    ));
+                    continue;
+                }
+                // 资源超限检测
+                if proc_info.memory_kb > self.config.max_memory_mb * 1024 {
+                    results.push((
+                        agent_id.clone(),
+                        RecoveryAction::Diagnose,
+                        format!(
+                            "Memory exceeded: {}KB > {}MB",
+                            proc_info.memory_kb, self.config.max_memory_mb
+                        ),
+                    ));
+                    continue;
+                }
+            }
+
+            // 检测层2: 心跳超时
             if elapsed > self.config.heartbeat_timeout {
                 if monitor.restart_count >= self.config.max_restart {
                     results.push((

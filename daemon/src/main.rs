@@ -11,6 +11,8 @@ mod db;
 mod ipc;
 mod log_buffer;
 mod memory;
+mod permission;
+mod recovery;
 mod rollback;
 mod router;
 mod scheduler;
