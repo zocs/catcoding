@@ -76,7 +76,13 @@ def main():
     workdir = args.workdir or os.environ.get("WORKDIR", ".")
 
     AgentClass = load_agent_class(args.role)
-    agent = AgentClass(agent_id, project_id, workdir)
+
+    # Subclass __init__ accepts (agent_id, project_id, workdir) and hard-codes role.
+    # BaseAgent fallback accepts (agent_id, role, project_id, workdir).
+    try:
+        agent = AgentClass(agent_id, project_id, workdir)
+    except TypeError:
+        agent = AgentClass(agent_id, args.role, project_id, workdir)
 
     print(f"🐱 {args.role} Agent 启动: {agent_id}", flush=True)
     asyncio.run(agent.run())

@@ -70,18 +70,27 @@ enum Commands {
 struct HealthResp {
     status: String,
     version: String,
+    #[serde(default)]
+    uptime_secs: u64,
 }
 
 #[derive(Debug, Deserialize)]
 struct AgentInfo {
     id: String,
     role: String,
-    name: String,
     status: String,
     #[serde(default)]
     current_task: Option<String>,
     #[serde(default)]
-    tasks_completed: u32,
+    restart_count: u32,
+    #[serde(default = "default_level")]
+    level: u32,
+    #[serde(default)]
+    xp: u32,
+}
+
+fn default_level() -> u32 {
+    1
 }
 
 #[derive(Debug, Deserialize)]
@@ -93,7 +102,9 @@ struct AgentsResp {
 struct TaskInfo {
     id: String,
     #[serde(default)]
-    summary: String,
+    title: String,
+    #[serde(default)]
+    description: String,
     #[serde(default)]
     status: String,
     #[serde(default)]
@@ -440,13 +451,22 @@ fn cmd_status(daemon: &str) -> Result<()> {
         println!("{}", "🐱 Agent Status".bright_yellow().bold());
         for a in &agents.agents {
             let s = match a.status.as_str() {
-                "active" => a.status.bright_green(),
+                "active" | "working" => a.status.bright_green(),
                 "idle" => a.status.bright_yellow(),
                 "error" => a.status.bright_red(),
                 _ => a.status.normal(),
             };
             let task = a.current_task.as_deref().unwrap_or("—");
-            println!("  {} {} [{}] {}", a.name, a.role.dimmed(), s, task);
+            let id_short = &a.id[..8.min(a.id.len())];
+            println!(
+                "  [{}] {} Lv{}·{}xp [{}] {}",
+                id_short.bright_cyan(),
+                a.role.dimmed(),
+                a.level,
+                a.xp,
+                s,
+                task
+            );
         }
     }
     println!();
@@ -489,7 +509,12 @@ fn cmd_mice(daemon: &str) -> Result<()> {
         println!("🐭 {} bug(s):", bugs.len().to_string().bright_red().bold());
         for t in &bugs {
             let id = &t.id[..8.min(t.id.len())];
-            println!("  🐛 [{}] {} — {}", id.bright_red(), t.status, t.summary);
+            let title = if t.title.is_empty() {
+                t.description.chars().take(60).collect::<String>()
+            } else {
+                t.title.clone()
+            };
+            println!("  🐛 [{}] {} — {}", id.bright_red(), t.status, title);
         }
     }
     Ok(())
@@ -509,9 +534,9 @@ fn cmd_feed(daemon: &str, agent: Option<String>) -> Result<()> {
             if let Some(a) = agents
                 .agents
                 .iter()
-                .find(|a| a.name == name || a.id == name)
+                .find(|a| a.id == name || a.role == name)
             {
-                println!("🐟 Feeding {}...", a.name.bright_yellow());
+                println!("🐟 Feeding {}...", a.id.bright_yellow());
             } else {
                 println!("❌ Agent not found: {}", name);
             }
@@ -524,7 +549,7 @@ fn cmd_feed(daemon: &str, agent: Option<String>) -> Result<()> {
                     "watchdog" => "🐭",
                     _ => "🐟",
                 };
-                println!("  {} {} — fed!", food, a.name);
+                println!("  {} {} [{}] — fed!", food, a.id, a.role);
             }
         }
     }
