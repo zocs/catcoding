@@ -312,65 +312,82 @@ impl FailureHandler {
     }
 
     /// 执行单个恢复步骤
-    async fn execute_step(&self, step: &RecoveryStep, context: &str) -> Result<String> {
+    ///
+    /// 说明：大部分步骤仍需依赖外部资源才能真正生效（NATS client、lifecycle manager、
+    /// provider 池等）。当前实现把"尚未接线"的步骤**显式返回错误**而不是假装成功
+    /// `sleep + Ok`。调用方会继续走下一条 step 或升级到 EscalateToHuman——这样上报
+    /// 的状态和实际行为一致。
+    async fn execute_step(&self, step: &RecoveryStep, _context: &str) -> Result<String> {
         match step {
-            RecoveryStep::Reconnect { service } => {
-                tracing::info!("Reconnecting to service: {}", service);
-                // 这里应该实现实际的重连逻辑
-                // 目前只是模拟
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                Ok(format!("Reconnected to {}", service))
-            }
-            RecoveryStep::RestartProcess { agent_id } => {
-                tracing::info!("Restarting process for agent: {}", agent_id);
-                // 这里应该实现实际的重启逻辑
-                // 目前只是模拟
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                Ok(format!("Restarted agent: {}", agent_id))
-            }
-            RecoveryStep::CleanBuild => {
-                tracing::info!("Cleaning build artifacts");
-                // 这里应该实现实际的清理逻辑
-                // 目前只是模拟
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                Ok("Build cleaned".to_string())
-            }
-            RecoveryStep::RetryWithBackoff { max_retries } => {
-                tracing::info!("Retrying with backoff, max retries: {}", max_retries);
-                // 这里应该实现指数退避重试逻辑
-                // 目前只是模拟
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                Ok(format!("Retry completed (max: {})", max_retries))
-            }
-            RecoveryStep::SwitchProvider { fallback } => {
-                tracing::info!("Switching to fallback provider: {}", fallback);
-                // 这里应该实现实际的provider切换逻辑
-                // 目前只是模拟
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                Ok(format!("Switched to provider: {}", fallback))
-            }
-            RecoveryStep::EscalateToHuman { reason } => {
-                tracing::error!("Escalating to human: {}", reason);
-                Err(anyhow::anyhow!("Escalated to human: {}", reason))
-            }
             RecoveryStep::Wait { seconds } => {
                 tracing::info!("Waiting for {} seconds", seconds);
                 tokio::time::sleep(std::time::Duration::from_secs(*seconds)).await;
                 Ok(format!("Waited for {} seconds", seconds))
             }
+            RecoveryStep::EscalateToHuman { reason } => {
+                tracing::error!("Escalating to human: {}", reason);
+                Err(anyhow::anyhow!("Escalated to human: {}", reason))
+            }
+            RecoveryStep::Reconnect { service } => {
+                tracing::warn!("RecoveryStep::Reconnect({}) not wired to NATS client yet", service);
+                Err(anyhow::anyhow!(
+                    "Reconnect({}) not implemented — requires NATS client handle from main.rs",
+                    service
+                ))
+            }
+            RecoveryStep::RestartProcess { agent_id } => {
+                tracing::warn!(
+                    "RecoveryStep::RestartProcess({}) not wired to AgentLifecycleManager yet",
+                    agent_id
+                );
+                Err(anyhow::anyhow!(
+                    "RestartProcess({}) not implemented — requires lifecycle_manager handle",
+                    agent_id
+                ))
+            }
+            RecoveryStep::CleanBuild => {
+                tracing::warn!("RecoveryStep::CleanBuild not wired to build system yet");
+                Err(anyhow::anyhow!(
+                    "CleanBuild not implemented — requires workspace path + cargo invocation"
+                ))
+            }
+            RecoveryStep::RetryWithBackoff { max_retries } => {
+                tracing::warn!(
+                    "RecoveryStep::RetryWithBackoff(max={}) has no target to retry",
+                    max_retries
+                );
+                Err(anyhow::anyhow!(
+                    "RetryWithBackoff not implemented — requires retry target closure"
+                ))
+            }
+            RecoveryStep::SwitchProvider { fallback } => {
+                tracing::warn!(
+                    "RecoveryStep::SwitchProvider({}) not wired to provider pool yet",
+                    fallback
+                );
+                Err(anyhow::anyhow!(
+                    "SwitchProvider({}) not implemented — requires provider registry",
+                    fallback
+                ))
+            }
             RecoveryStep::Resubscribe { topics } => {
-                tracing::info!("Resubscribing to topics: {:?}", topics);
-                // 这里应该实现实际的重新订阅逻辑
-                // 目前只是模拟
-                tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                Ok(format!("Resubscribed to {} topics", topics.len()))
+                tracing::warn!(
+                    "RecoveryStep::Resubscribe({:?}) not wired to NATS client yet",
+                    topics
+                );
+                Err(anyhow::anyhow!(
+                    "Resubscribe not implemented — requires NATS client handle"
+                ))
             }
             RecoveryStep::RebuildConnection { endpoint } => {
-                tracing::info!("Rebuilding connection to endpoint: {}", endpoint);
-                // 这里应该实现实际的连接重建逻辑
-                // 目前只是模拟
-                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
-                Ok(format!("Rebuilt connection to {}", endpoint))
+                tracing::warn!(
+                    "RecoveryStep::RebuildConnection({}) not wired to WebSocket manager yet",
+                    endpoint
+                );
+                Err(anyhow::anyhow!(
+                    "RebuildConnection({}) not implemented — requires WS state handle",
+                    endpoint
+                ))
             }
         }
     }
