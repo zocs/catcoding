@@ -91,7 +91,8 @@ import {
   DocumentTextOutline,
   HardwareChipOutline,
   BugOutline,
-  LayersOutline
+  LayersOutline,
+  BusinessOutline
 } from '@vicons/ionicons5'
 import LangSwitch from '../components/LangSwitch.vue'
 import ThemeSwitch from '../components/ThemeSwitch.vue'
@@ -123,6 +124,7 @@ function renderIcon(icon: any) {
 const menuOptions = computed<MenuOption[]>(() => [
   { label: t('nav.agents'), key: 'agents', icon: renderIcon(PeopleOutline) },
   { label: t('nav.team'), key: 'team', icon: renderIcon(LayersOutline) },
+  { label: t('nav.office'), key: 'office', icon: renderIcon(BusinessOutline) },
   { label: t('nav.board'), key: 'board', icon: renderIcon(GridOutline) },
   { label: t('nav.kitchen'), key: 'kitchen', icon: renderIcon(BugOutline) },
   { label: t('nav.gantt'), key: 'gantt', icon: renderIcon(BarChartOutline) },

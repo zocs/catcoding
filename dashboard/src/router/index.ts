@@ -60,6 +60,11 @@ const router = createRouter({
           path: 'team',
           name: 'team',
           component: () => import('../views/Team.vue')
+        },
+        {
+          path: 'office',
+          name: 'office',
+          component: () => import('../views/Office.vue')
         }
       ]
     }
