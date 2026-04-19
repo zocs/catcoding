@@ -348,6 +348,45 @@ async fn update_task_status(
                 )
                 .await;
 
+            // Broadcast agent live-status over WS so dashboards can react without polling.
+            // Derive dashboard-style status ('active' | 'idle' | 'busy' | 'error') from task transition.
+            let agent_status = match new_status {
+                TaskStatus::Active => Some("active"),
+                TaskStatus::Reviewing | TaskStatus::Blocked => Some("busy"),
+                TaskStatus::Done | TaskStatus::Rollbacked => Some("idle"),
+                TaskStatus::Failed => Some("error"),
+                _ => None,
+            };
+            if let (Some(status_str_ws), Some(task)) = (
+                agent_status,
+                state.state_manager.get_task(&state.project_id, &id).await,
+            ) {
+                if let Some(role) = task.assigned_to.as_deref() {
+                    let project = state.state_manager.get_project(&state.project_id).await;
+                    let agent_id = project.and_then(|p| {
+                        p.agents
+                            .values()
+                            .find(|a| a.role == role)
+                            .map(|a| a.id.clone())
+                    });
+                    if let Some(aid) = agent_id {
+                        let ws_msg = json!({
+                            "type": "agent.status",
+                            "agent_id": aid,
+                            "role": role,
+                            "status": status_str_ws,
+                            "task_id": task.id,
+                            "timestamp": chrono::Utc::now().to_rfc3339(),
+                        });
+                        let _ = state.ws_tx.send(ws_msg.to_string());
+                        let _ = state
+                            .router
+                            .publish_json(&format!("agent.{}.status", aid), &ws_msg)
+                            .await;
+                    }
+                }
+            }
+
             Json(json!({
                 "id": id,
                 "status": status_str,
