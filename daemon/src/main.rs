@@ -170,11 +170,12 @@ async fn main() -> Result<()> {
     // Recovery system
     let recipe_store = Arc::new(RecipeStore::new());
     recipe_store.init_default_recipes().await;
-    let failure_handler = Arc::new(FailureHandler::new(recipe_store.clone()));
-    tracing::info!("Recovery system initialized (5 default recipes loaded)");
-    // NOTE: watchdog Escalate currently only logs. Wiring it into failure_handler
-    // happens in the next session (requires holding a clone inside Watchdog).
-    let _ = failure_handler.clone();
+    let failure_handler = Arc::new(
+        FailureHandler::new(recipe_store.clone())
+            .with_router(router.clone())
+            .with_lifecycle_manager(lifecycle_manager.clone()),
+    );
+    tracing::info!("Recovery system initialized (5 default recipes, router + lifecycle wired)");
 
     // Log buffer
     let log_buffer = std::sync::Arc::new(log_buffer::LogBuffer::new(500));
@@ -218,6 +219,44 @@ async fn main() -> Result<()> {
     tracing::info!("  Database: {}", db_path);
     tracing::info!("Press Ctrl+C to stop");
 
-    axum::serve(listener, app).await?;
+    // Graceful shutdown: axum drains in-flight requests, then we clean up agents.
+    axum::serve(listener, app)
+        .with_graceful_shutdown(shutdown_signal())
+        .await?;
+
+    // ── Post-shutdown cleanup ──
+    tracing::info!("Shutting down — cleaning up agents...");
+    let lm = lifecycle_manager.lock().await;
+    match lm.stop_all().await {
+        Ok(()) => tracing::info!("All agents stopped"),
+        Err(e) => tracing::warn!("Agent cleanup error: {}", e),
+    }
+
+    tracing::info!("CatCoding Daemon stopped. Goodbye 🐱");
     Ok(())
+}
+
+/// Wait for SIGINT (Ctrl+C) or SIGTERM (systemd / kill).
+async fn shutdown_signal() {
+    let ctrl_c = async {
+        tokio::signal::ctrl_c()
+            .await
+            .expect("failed to install Ctrl+C handler");
+    };
+
+    #[cfg(unix)]
+    let terminate = async {
+        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+            .expect("failed to install SIGTERM handler")
+            .recv()
+            .await;
+    };
+
+    #[cfg(not(unix))]
+    let terminate = std::future::pending::<()>();
+
+    tokio::select! {
+        _ = ctrl_c => { tracing::info!("SIGINT (Ctrl+C) received"); },
+        _ = terminate => { tracing::info!("SIGTERM received"); },
+    }
 }
