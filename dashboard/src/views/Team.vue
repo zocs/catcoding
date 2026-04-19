@@ -3,7 +3,8 @@
 import { ref, onMounted, computed } from 'vue'
 import { NPageHeader, NCard, NButton, NEmpty, NTag, useMessage } from 'naive-ui'
 import { Agent, CatCodingApi } from '@/api/types'
-import CatAvatar from '@/components/CatAvatar.vue'
+import CatSprite from '@/components/CatSprite.vue'
+import { breedFor, agentStatusToSpriteState } from '@/api/catBreed'
 import XpBadge from '@/components/XpBadge.vue'
 import { useI18n } from 'vue-i18n'
 import { useResponsive } from '@/composables/useResponsive'
@@ -65,7 +66,7 @@ onMounted(fetchAgents)
       >
         <div class="members">
           <div v-for="agent in list" :key="agent.id ?? agent.role" class="member">
-            <CatAvatar :emoji="getRole(role).emoji" :name="agent.id ?? agent.role" :status="(agent.status as any) || 'idle'" size="small" />
+            <CatSprite :breed="breedFor(role)" :state="agentStatusToSpriteState((agent.status as any) || 'idle')" :size="44" />
             <div class="member-info">
               <div class="member-id">{{ (agent.id ?? agent.role).slice(0, 14) }}</div>
               <XpBadge :level="agent.level ?? 1" :xp="agent.xp ?? 0" />

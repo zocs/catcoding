@@ -12,9 +12,8 @@ export {}
 declare module 'vue' {
   export interface GlobalComponents {
     BugTracker: typeof import('./src/components/BugTracker.vue')['default']
-    CatAvatar: typeof import('./src/components/CatAvatar.vue')['default']
-    CatAvatarSVG: typeof import('./src/components/CatAvatarSVG.vue')['default']
     CatBackground: typeof import('./src/components/CatBackground.vue')['default']
+    CatSprite: typeof import('./src/components/CatSprite.vue')['default']
     ClickPaw: typeof import('./src/components/ClickPaw.vue')['default']
     EasterEgg: typeof import('./src/components/EasterEgg.vue')['default']
     LangSwitch: typeof import('./src/components/LangSwitch.vue')['default']

@@ -3,7 +3,9 @@ import { useI18n } from 'vue-i18n'
 import { ref, onMounted, computed } from 'vue'
 import { NPageHeader, NSpace, NCard, NTag, NBadge, NButton, NScrollbar, NEmpty, NAvatar, NModal, NInput, NForm, NFormItem, useMessage } from 'naive-ui'
 import { Task, TaskStatus, KANBAN_COLUMNS, STATUS_CONFIG, CatCodingApi } from '@/api/types'
-import CatAvatar from '@/components/CatAvatar.vue'
+import CatSprite from '@/components/CatSprite.vue'
+import { breedFor } from '@/api/catBreed'
+import type { SpriteState } from '@/api/catBreed'
 import EasterEgg from '@/components/EasterEgg.vue'
 import { useResponsive } from '@/composables/useResponsive'
 import { useAgentRoles, ROLE_META } from '@/composables/useAgentRoles'
@@ -113,6 +115,14 @@ function getAgentForTask(assignedTo: string | null) {
   return getRole(assignedTo)
 }
 
+function taskStatusToSpriteState(s: TaskStatus): SpriteState {
+  if (s === 'active') return 'working'
+  if (s === 'reviewing') return 'working'
+  if (s === 'done') return 'playing'
+  if (s === 'failed' || s === 'rollbacked') return 'idle'
+  return 'idle'
+}
+
 // 猫爪点击特效
 const pawPrints = ref<{ id: number; x: number; y: number }[]>([])
 let pawId = 0
@@ -196,12 +206,10 @@ onMounted(fetchTasks)
               <div class="task-footer">
                 <n-space align="center" justify="space-between">
                   <n-space v-if="task.assigned_to" align="center" size="small">
-                    <CatAvatar
-                      :emoji="getAgentForTask(task.assigned_to)?.emoji || '🐱'"
-                      :name="getAgentForTask(task.assigned_to)?.name || task.assigned_to"
-                      :status="task.status === 'active' ? 'working' : task.status === 'done' ? 'done' : task.status === 'failed' ? 'error' : 'idle'"
-                      size="small"
-                      :show-animation="task.status === 'active'"
+                    <CatSprite
+                      :breed="breedFor(task.assigned_to)"
+                      :state="taskStatusToSpriteState(task.status)"
+                      :size="44"
                     />
                     <span class="agent-name">{{ getAgentForTask(task.assigned_to)?.name || task.assigned_to }}</span>
                   </n-space>

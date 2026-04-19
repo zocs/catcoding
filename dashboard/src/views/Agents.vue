@@ -2,7 +2,8 @@
 import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { NPageHeader, NCard, NTag, NSpace, NButton, NEmpty, useMessage } from 'naive-ui'
 import { Agent, CatCodingApi } from '@/api/types'
-import CatAvatarSVG from '@/components/CatAvatarSVG.vue'
+import CatSprite from '@/components/CatSprite.vue'
+import { breedFor, agentStatusToSpriteState } from '@/api/catBreed'
 import EasterEgg from '@/components/EasterEgg.vue'
 import XpBadge from '@/components/XpBadge.vue'
 import { useI18n } from 'vue-i18n'
@@ -191,11 +192,10 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
           <div class="card-body">
             <!-- SVG 头像 -->
             <div class="avatar-wrapper">
-              <CatAvatarSVG
-                :role="agent.role"
-                :status="agent.status"
+              <CatSprite
+                :breed="breedFor(agent.role)"
+                :state="agentStatusToSpriteState(agent.status)"
                 :size="avatarSize"
-                :animated="agent.status === 'active'"
               />
             </div>
 
@@ -245,7 +245,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
             <div class="card-ear right"></div>
           </div>
           <div class="card-body">
-            <CatAvatarSVG :role="agent.role" :status="agent.status" :size="isMobile ? 40 : 64" />
+            <CatSprite :breed="breedFor(agent.role)" :state="agentStatusToSpriteState(agent.status)" :size="isMobile ? 40 : 64" />
             <div class="agent-info">
               <div class="agent-name-row">
                 <span class="agent-name">{{ getAgentInfo(agent.role).name }}</span>
@@ -284,7 +284,7 @@ const decorative = computed(() => agents.value.filter(a => getAgentInfo(a.role)?
           @click="feedAgent(agent.role)"
         >
           <div class="mascot-wrapper">
-            <CatAvatarSVG :role="agent.role" status="idle" :size="isMobile ? 80 : 120" :animated="true" />
+            <CatSprite :breed="breedFor(agent.role)" state="playing" :size="isMobile ? 80 : 120" />
             <div class="mascot-name">{{ getAgentInfo(agent.role).name }}</div>
             <div class="agent-role-tag">@{{ agent.role }}</div>
             <div class="mascot-desc" v-if="!isMobile">{{ getAgentInfo(agent.role).desc }}</div>

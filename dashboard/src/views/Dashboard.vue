@@ -2,7 +2,8 @@
 import { ref, onMounted } from 'vue'
 import { NCard, NStatistic, NSpace, NTag, NProgress, NList, NListItem, NThing, useMessage } from 'naive-ui'
 import { Task, Agent, WatchdogStatus, CatCodingApi, STATUS_CONFIG } from '@/api/types'
-import CatAvatarSVG from '@/components/CatAvatarSVG.vue'
+import CatSprite from '@/components/CatSprite.vue'
+import { breedFor, agentStatusToSpriteState } from '@/api/catBreed'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -96,7 +97,7 @@ onMounted(fetchData)
       <n-card :title="'🐱 ' + t('dashboard.activeAgents')" class="detail-card">
         <div class="agent-mini-list">
           <div v-for="agent in agents.slice(0, 6)" :key="agent.role" class="agent-mini">
-            <CatAvatarSVG :role="agent.role" :status="agent.status" :size="40" />
+            <CatSprite :breed="breedFor(agent.role)" :state="agentStatusToSpriteState(agent.status)" :size="40" />
             <div class="agent-mini-info">
               <span class="agent-mini-name">{{ agent.name }}</span>
               <span class="agent-mini-task" v-if="agent.current_task">
