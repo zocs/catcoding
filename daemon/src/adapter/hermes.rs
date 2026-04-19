@@ -91,6 +91,10 @@ impl AgentAdapter for HermesAdapter {
             .env("PROJECT_ID", &context.project_id)
             .env("WORKDIR", &context.working_dir)
             .env("ROLE", &context.role)
+            // LLM configuration — forwarded if present in daemon env
+            .envs(std::env::vars().filter(|(k, _)| {
+                k.starts_with("LLM_") || k.starts_with("OPENAI_") || k == "ANTHROPIC_API_KEY"
+            }))
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
