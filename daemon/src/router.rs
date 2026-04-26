@@ -1,6 +1,7 @@
 use anyhow::Result;
 use async_nats::Client;
 use serde::{Deserialize, Serialize};
+use std::sync::{Arc, RwLock};
 
 /// 消息类型
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -85,16 +86,47 @@ impl AgentMessage {
 /// - `logs.{project_id}`     — 日志流（Stream）
 /// - `watchdog.alert`        — Watchdog 告警
 pub struct MessageRouter {
-    client: Option<Client>,
+    client: Arc<RwLock<Option<Client>>>,
+    nats_url: Option<String>,
 }
 
 impl MessageRouter {
     pub fn new(client: Option<Client>) -> Self {
-        Self { client }
+        Self {
+            client: Arc::new(RwLock::new(client)),
+            nats_url: None,
+        }
+    }
+
+    pub fn with_nats_url(mut self, nats_url: String) -> Self {
+        self.nats_url = Some(nats_url);
+        self
     }
 
     pub fn is_connected(&self) -> bool {
-        self.client.is_some()
+        self.client
+            .read()
+            .map(|slot| slot.is_some())
+            .unwrap_or(false)
+    }
+
+    /// Attempt to reconnect NATS and replace current client handle.
+    pub async fn reconnect(&self) -> Result<()> {
+        let nats_url = self
+            .nats_url
+            .clone()
+            .ok_or_else(|| anyhow::anyhow!("NATS URL not configured in MessageRouter"))?;
+        let client = async_nats::connect(&nats_url)
+            .await
+            .map_err(|e| anyhow::anyhow!("NATS reconnect to {} failed: {}", nats_url, e))?;
+
+        let mut slot = self
+            .client
+            .write()
+            .map_err(|_| anyhow::anyhow!("MessageRouter client lock poisoned"))?;
+        *slot = Some(client);
+        tracing::info!("NATS reconnected: {}", nats_url);
+        Ok(())
     }
 
     /// 发送一条 `AgentMessage` 到指定 subject
@@ -104,18 +136,19 @@ impl MessageRouter {
     }
 
     /// 发送任意 JSON 到指定 subject
-    pub async fn publish_json(
-        &self,
-        subject: &str,
-        value: &serde_json::Value,
-    ) -> Result<()> {
+    pub async fn publish_json(&self, subject: &str, value: &serde_json::Value) -> Result<()> {
         let payload = serde_json::to_vec(value)?;
         self.publish_bytes(subject, payload).await
     }
 
     /// 底层字节发送
     pub async fn publish_bytes(&self, subject: &str, payload: Vec<u8>) -> Result<()> {
-        let Some(client) = self.client.as_ref() else {
+        let client = self
+            .client
+            .read()
+            .map_err(|_| anyhow::anyhow!("MessageRouter client lock poisoned"))?
+            .clone();
+        let Some(client) = client else {
             tracing::trace!(
                 "NATS offline, skip publish [{}] ({} bytes)",
                 subject,
@@ -138,8 +171,12 @@ impl MessageRouter {
     pub async fn subscribe(&self, subject: &str) -> Result<async_nats::Subscriber> {
         let client = self
             .client
-            .as_ref()
-            .ok_or_else(|| anyhow::anyhow!("NATS not connected — cannot subscribe to {}", subject))?;
+            .read()
+            .map_err(|_| anyhow::anyhow!("MessageRouter client lock poisoned"))?
+            .clone()
+            .ok_or_else(|| {
+                anyhow::anyhow!("NATS not connected — cannot subscribe to {}", subject)
+            })?;
         let sub = client
             .subscribe(subject.to_string())
             .await

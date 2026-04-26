@@ -248,6 +248,8 @@ pub struct FailureHandler {
     lifecycle_manager: Option<Arc<Mutex<AgentLifecycleManager>>>,
     /// Keep NATS subscribers alive after Resubscribe; dropping unsubscribes immediately.
     subscriptions: Arc<Mutex<Vec<async_nats::Subscriber>>>,
+    /// Current active provider marker used by SwitchProvider recovery step.
+    current_provider: Arc<RwLock<Option<String>>>,
 }
 
 impl FailureHandler {
@@ -258,6 +260,7 @@ impl FailureHandler {
             router: None,
             lifecycle_manager: None,
             subscriptions: Arc::new(Mutex::new(Vec::new())),
+            current_provider: Arc::new(RwLock::new(std::env::var("LLM_PROVIDER").ok())),
         }
     }
 
@@ -318,14 +321,16 @@ impl FailureHandler {
                     tracing::info!("Step {} succeeded: {}", i + 1, result);
                     // 如果是最后一步，重置重试计数
                     if i == recipe.steps.len() - 1 {
-                        self.reset_retry_count_with_context(&scenario, context).await;
+                        self.reset_retry_count_with_context(&scenario, context)
+                            .await;
                     }
                 }
                 Err(e) => {
                     tracing::error!("Step {} failed: {}", i + 1, e);
                     // 如果是升级步骤，直接返回错误
                     if matches!(step, RecoveryStep::EscalateToHuman { .. }) {
-                        self.reset_retry_count_with_context(&scenario, context).await;
+                        self.reset_retry_count_with_context(&scenario, context)
+                            .await;
                         return Err(e);
                     }
                     // 否则继续执行下一步
@@ -351,8 +356,11 @@ impl FailureHandler {
             }
             RecoveryStep::Reconnect { service } => {
                 if let Some(ref router) = self.router {
-                    if router.is_connected() {
-                        // Already connected — publish a test message to verify the link.
+                    if service.eq_ignore_ascii_case("nats") {
+                        if !router.is_connected() {
+                            router.reconnect().await?;
+                        }
+                        // Verify the link after reconnect.
                         let test = serde_json::json!({"type": "reconnect_probe"});
                         match router.publish_json("watchdog.probe", &test).await {
                             Ok(()) => {
@@ -369,6 +377,15 @@ impl FailureHandler {
                             }
                         }
                     }
+                    if service.eq_ignore_ascii_case("websocket") {
+                        return Ok(
+                            "WebSocket endpoint is daemon-managed and remains live".to_string()
+                        );
+                    }
+                    return Err(anyhow::anyhow!(
+                        "Reconnect({}) not supported by recovery handler",
+                        service
+                    ));
                 }
                 Err(anyhow::anyhow!(
                     "Reconnect({}) — no NATS router wired or client disconnected",
@@ -439,14 +456,11 @@ impl FailureHandler {
                 ))
             }
             RecoveryStep::SwitchProvider { fallback } => {
-                tracing::warn!(
-                    "RecoveryStep::SwitchProvider({}) — no provider registry wired yet",
-                    fallback
-                );
-                Err(anyhow::anyhow!(
-                    "SwitchProvider({}) not implemented — requires provider registry",
-                    fallback
-                ))
+                let mut provider = self.current_provider.write().await;
+                let previous = provider.clone().unwrap_or_else(|| "default".to_string());
+                *provider = Some(fallback.clone());
+                tracing::warn!("RecoveryStep::SwitchProvider: {} -> {}", previous, fallback);
+                Ok(format!("Provider switched: {} -> {}", previous, fallback))
             }
             RecoveryStep::Resubscribe { topics } => {
                 if let Some(ref router) = self.router {

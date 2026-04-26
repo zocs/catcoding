@@ -122,7 +122,7 @@ async fn main() -> Result<()> {
     };
 
     // Message router — wraps NATS client (or no-op if disconnected)
-    let router = Arc::new(MessageRouter::new(nats_client.clone()));
+    let router = Arc::new(MessageRouter::new(nats_client.clone()).with_nats_url(nats_url.clone()));
     tracing::info!(
         "Message router: {}",
         if router.is_connected() {
@@ -189,6 +189,31 @@ async fn main() -> Result<()> {
             }
         }
         tracing::warn!("Watchdog restart channel closed; recovery listener exiting");
+    });
+    let failure_handler_for_nats = failure_handler.clone();
+    let router_for_nats = router.clone();
+    tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_secs(30));
+        const NATS_RECOVERY_CONTEXT: &str = "daemon_nats";
+        loop {
+            interval.tick().await;
+            if router_for_nats.is_connected() {
+                failure_handler_for_nats
+                    .reset_retry_count_with_context(
+                        &FailureScenario::NatsDisconnect,
+                        NATS_RECOVERY_CONTEXT,
+                    )
+                    .await;
+                continue;
+            }
+            tracing::warn!("NATS disconnected; triggering recovery recipe");
+            if let Err(e) = failure_handler_for_nats
+                .handle_failure(FailureScenario::NatsDisconnect, NATS_RECOVERY_CONTEXT)
+                .await
+            {
+                tracing::warn!("NATS recovery attempt failed: {}", e);
+            }
+        }
     });
 
     // Log buffer
