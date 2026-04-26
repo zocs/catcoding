@@ -350,10 +350,10 @@ impl AgentLifecycleManager {
     }
 
     /// 停止 Agent
-    pub async fn stop_agent(&self, agent_id: &str) -> Result<()> {
+    pub async fn stop_agent(&mut self, agent_id: &str) -> Result<()> {
         let handle = self
             .handles
-            .get(agent_id)
+            .remove(agent_id)
             .ok_or_else(|| anyhow::anyhow!("Agent not found: {}", agent_id))?;
 
         let adapter = self
@@ -361,7 +361,7 @@ impl AgentLifecycleManager {
             .get(&handle.adapter_type)
             .ok_or_else(|| anyhow::anyhow!("Adapter not found: {}", handle.adapter_type))?;
 
-        adapter.stop(handle).await
+        adapter.stop(&handle).await
     }
 
     /// 健康检查
@@ -385,11 +385,12 @@ impl AgentLifecycleManager {
     }
 
     /// 停止所有 Agent
-    pub async fn stop_all(&self) -> Result<()> {
-        for (agent_id, handle) in &self.handles {
+    pub async fn stop_all(&mut self) -> Result<()> {
+        let handles = std::mem::take(&mut self.handles);
+        for (agent_id, handle) in handles {
             if let Some(adapter) = self.adapters.get(&handle.adapter_type) {
                 tracing::info!("Stopping Agent: {}", agent_id);
-                let _ = adapter.stop(handle).await;
+                let _ = adapter.stop(&handle).await;
             }
         }
         Ok(())

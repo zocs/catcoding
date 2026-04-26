@@ -384,11 +384,10 @@ impl FailureHandler {
                             agent_id.as_str()
                         };
                         tracing::info!("Restarting agent {}", effective_agent_id);
-                        let mgr = lm.lock().await;
+                        let mut mgr = lm.lock().await;
                         mgr.stop_agent(effective_agent_id).await.map_err(|e| {
                             anyhow::anyhow!("RestartProcess({}) failed: {}", effective_agent_id, e)
                         })?;
-                        drop(mgr);
                         // Re-spawn is handled by the scheduler's ensure_agent_for_role()
                         // on the next scheduling tick — we just signal that the slot is free.
                         Ok(format!(

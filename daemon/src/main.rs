@@ -240,7 +240,7 @@ async fn main() -> Result<()> {
 
     // ── Post-shutdown cleanup ──
     tracing::info!("Shutting down — cleaning up agents...");
-    let lm = lifecycle_manager.lock().await;
+    let mut lm = lifecycle_manager.lock().await;
     match lm.stop_all().await {
         Ok(()) => tracing::info!("All agents stopped"),
         Err(e) => tracing::warn!("Agent cleanup error: {}", e),
