@@ -313,17 +313,14 @@ impl FailureHandler {
         }
 
         // 执行恢复步骤
+        let mut any_success = false;
         for (i, step) in recipe.steps.iter().enumerate() {
             tracing::info!("Executing step {}/{}: {}", i + 1, recipe.steps.len(), step);
 
             match self.execute_step(step, context).await {
                 Ok(result) => {
                     tracing::info!("Step {} succeeded: {}", i + 1, result);
-                    // 如果是最后一步，重置重试计数
-                    if i == recipe.steps.len() - 1 {
-                        self.reset_retry_count_with_context(&scenario, context)
-                            .await;
-                    }
+                    any_success = true;
                 }
                 Err(e) => {
                     tracing::error!("Step {} failed: {}", i + 1, e);
@@ -339,7 +336,16 @@ impl FailureHandler {
             }
         }
 
-        Ok(format!("Recovery completed for scenario: {}", scenario))
+        if any_success {
+            self.reset_retry_count_with_context(&scenario, context)
+                .await;
+            Ok(format!("Recovery completed for scenario: {}", scenario))
+        } else {
+            Err(anyhow::anyhow!(
+                "Recovery failed for scenario {}: all steps failed",
+                scenario
+            ))
+        }
     }
 
     /// 执行单个恢复步骤
@@ -551,5 +557,66 @@ impl FailureHandler {
         let key = Self::retry_key(scenario, context);
         let retry_counts = self.retry_counts.read().await;
         *retry_counts.get(&key).unwrap_or(&0)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn test_handle_failure_errors_when_all_steps_fail() {
+        let store = Arc::new(RecipeStore::new());
+        let scenario = FailureScenario::Custom("all_fail".to_string());
+        store
+            .add_recipe(RecoveryRecipe {
+                scenario: scenario.clone(),
+                steps: vec![RecoveryStep::Reconnect {
+                    service: "nats".to_string(),
+                }],
+                escalation_policy: EscalationPolicy::LogAndContinue,
+                max_retries: 2,
+                description: "all steps fail test".to_string(),
+            })
+            .await;
+        let handler = FailureHandler::new(store);
+        let err = handler
+            .handle_failure(scenario.clone(), "ctx-a")
+            .await
+            .expect_err("all failed recovery must return error");
+        assert!(err.to_string().contains("all steps failed"));
+    }
+
+    #[tokio::test]
+    async fn test_retry_count_isolation_by_context() {
+        let store = Arc::new(RecipeStore::new());
+        let scenario = FailureScenario::Custom("retry_scope".to_string());
+        store
+            .add_recipe(RecoveryRecipe {
+                scenario: scenario.clone(),
+                steps: vec![RecoveryStep::Reconnect {
+                    service: "nats".to_string(),
+                }],
+                escalation_policy: EscalationPolicy::LogAndContinue,
+                max_retries: 1,
+                description: "retry scope test".to_string(),
+            })
+            .await;
+        let handler = FailureHandler::new(store);
+
+        assert!(handler
+            .handle_failure(scenario.clone(), "ctx-a")
+            .await
+            .is_err());
+        assert!(handler
+            .handle_failure(scenario.clone(), "ctx-b")
+            .await
+            .is_err());
+
+        let err = handler
+            .handle_failure(scenario, "ctx-a")
+            .await
+            .expect_err("ctx-a second retry should hit max");
+        assert!(err.to_string().contains("Max retries reached"));
     }
 }
