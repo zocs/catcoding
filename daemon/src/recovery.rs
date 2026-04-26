@@ -241,7 +241,7 @@ impl RecipeStore {
 /// 故障处理器
 pub struct FailureHandler {
     recipe_store: Arc<RecipeStore>,
-    retry_counts: Arc<RwLock<HashMap<FailureScenario, u32>>>,
+    retry_counts: Arc<RwLock<HashMap<String, u32>>>,
     /// Optional: used by Reconnect/Resubscribe steps
     router: Option<Arc<MessageRouter>>,
     /// Optional: used by RestartProcess step
@@ -276,6 +276,7 @@ impl FailureHandler {
     /// 处理故障
     pub async fn handle_failure(&self, scenario: FailureScenario, context: &str) -> Result<String> {
         tracing::warn!("Handling failure: {} - {}", scenario, context);
+        let retry_key = Self::retry_key(&scenario, context);
 
         // 获取配方
         let recipe = match self.recipe_store.get_recipe(&scenario).await {
@@ -292,7 +293,7 @@ impl FailureHandler {
         // 检查重试次数
         {
             let mut retry_counts = self.retry_counts.write().await;
-            let count = retry_counts.entry(scenario.clone()).or_insert(0);
+            let count = retry_counts.entry(retry_key.clone()).or_insert(0);
             *count += 1;
 
             if *count > recipe.max_retries {
@@ -317,14 +318,14 @@ impl FailureHandler {
                     tracing::info!("Step {} succeeded: {}", i + 1, result);
                     // 如果是最后一步，重置重试计数
                     if i == recipe.steps.len() - 1 {
-                        self.reset_retry_count(&scenario).await;
+                        self.reset_retry_count_with_context(&scenario, context).await;
                     }
                 }
                 Err(e) => {
                     tracing::error!("Step {} failed: {}", i + 1, e);
                     // 如果是升级步骤，直接返回错误
                     if matches!(step, RecoveryStep::EscalateToHuman { .. }) {
-                        self.reset_retry_count(&scenario).await;
+                        self.reset_retry_count_with_context(&scenario, context).await;
                         return Err(e);
                     }
                     // 否则继续执行下一步
@@ -492,15 +493,49 @@ impl FailureHandler {
         }
     }
 
+    fn retry_key(scenario: &FailureScenario, context: &str) -> String {
+        let ctx = if context.trim().is_empty() {
+            "_"
+        } else {
+            context.trim()
+        };
+        format!("{}::{}", scenario, ctx)
+    }
+
+    /// 重置指定上下文的重试计数
+    pub async fn reset_retry_count_with_context(&self, scenario: &FailureScenario, context: &str) {
+        let key = Self::retry_key(scenario, context);
+        let mut retry_counts = self.retry_counts.write().await;
+        retry_counts.remove(&key);
+    }
+
     /// 重置重试计数
     pub async fn reset_retry_count(&self, scenario: &FailureScenario) {
+        let prefix = format!("{}::", scenario);
         let mut retry_counts = self.retry_counts.write().await;
-        retry_counts.remove(scenario);
+        retry_counts.retain(|k, _| !k.starts_with(&prefix));
     }
 
     /// 获取重试计数
     pub async fn get_retry_count(&self, scenario: &FailureScenario) -> u32 {
+        let prefix = format!("{}::", scenario);
         let retry_counts = self.retry_counts.read().await;
-        *retry_counts.get(scenario).unwrap_or(&0)
+        retry_counts
+            .iter()
+            .filter(|(k, _)| k.starts_with(&prefix))
+            .map(|(_, v)| *v)
+            .max()
+            .unwrap_or(0)
+    }
+
+    /// 获取指定上下文的重试计数
+    pub async fn get_retry_count_with_context(
+        &self,
+        scenario: &FailureScenario,
+        context: &str,
+    ) -> u32 {
+        let key = Self::retry_key(scenario, context);
+        let retry_counts = self.retry_counts.read().await;
+        *retry_counts.get(&key).unwrap_or(&0)
     }
 }
