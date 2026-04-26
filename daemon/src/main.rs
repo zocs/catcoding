@@ -25,7 +25,7 @@ use adapter::AgentLifecycleManager;
 use api::ApiState;
 use db::Database;
 use memory::MemoryManager;
-use recovery::{FailureHandler, RecipeStore};
+use recovery::{FailureHandler, FailureScenario, RecipeStore};
 use router::MessageRouter;
 use scheduler::{Scheduler, SchedulerConfig};
 use skin::cats::CatSkin;
@@ -70,7 +70,7 @@ async fn main() -> Result<()> {
 
     // Watchdog
     let watchdog_config = WatchdogConfig::default();
-    let (watchdog, _restart_rx) = Watchdog::new(watchdog_config.clone());
+    let (watchdog, mut restart_rx) = Watchdog::new(watchdog_config.clone());
     let watchdog = Arc::new(watchdog);
     tracing::info!(
         "Watchdog started - heartbeat: {}s, timeout: {}s",
@@ -176,6 +176,20 @@ async fn main() -> Result<()> {
             .with_lifecycle_manager(lifecycle_manager.clone()),
     );
     tracing::info!("Recovery system initialized (5 default recipes, router + lifecycle wired)");
+    let failure_handler_for_watchdog = failure_handler.clone();
+    tokio::spawn(async move {
+        while let Some(agent_id) = restart_rx.recv().await {
+            tracing::warn!("Watchdog requested restart recovery for agent {}", agent_id);
+            match failure_handler_for_watchdog
+                .handle_failure(FailureScenario::AgentTimeout, &agent_id)
+                .await
+            {
+                Ok(msg) => tracing::info!("Recovery handler result for {}: {}", agent_id, msg),
+                Err(e) => tracing::error!("Recovery handler failed for agent {}: {}", agent_id, e),
+            }
+        }
+        tracing::warn!("Watchdog restart channel closed; recovery listener exiting");
+    });
 
     // Log buffer
     let log_buffer = std::sync::Arc::new(log_buffer::LogBuffer::new(500));

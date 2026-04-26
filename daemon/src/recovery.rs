@@ -246,6 +246,8 @@ pub struct FailureHandler {
     router: Option<Arc<MessageRouter>>,
     /// Optional: used by RestartProcess step
     lifecycle_manager: Option<Arc<Mutex<AgentLifecycleManager>>>,
+    /// Keep NATS subscribers alive after Resubscribe; dropping unsubscribes immediately.
+    subscriptions: Arc<Mutex<Vec<async_nats::Subscriber>>>,
 }
 
 impl FailureHandler {
@@ -255,6 +257,7 @@ impl FailureHandler {
             retry_counts: Arc::new(RwLock::new(HashMap::new())),
             router: None,
             lifecycle_manager: None,
+            subscriptions: Arc::new(Mutex::new(Vec::new())),
         }
     }
 
@@ -287,20 +290,22 @@ impl FailureHandler {
         };
 
         // 检查重试次数
-        let mut retry_counts = self.retry_counts.write().await;
-        let count = retry_counts.entry(scenario.clone()).or_insert(0);
-        *count += 1;
+        {
+            let mut retry_counts = self.retry_counts.write().await;
+            let count = retry_counts.entry(scenario.clone()).or_insert(0);
+            *count += 1;
 
-        if *count > recipe.max_retries {
-            tracing::error!(
-                "Max retries ({}) reached for scenario: {}",
-                recipe.max_retries,
-                scenario
-            );
-            return Err(anyhow::anyhow!(
-                "Max retries reached for scenario: {}",
-                scenario
-            ));
+            if *count > recipe.max_retries {
+                tracing::error!(
+                    "Max retries ({}) reached for scenario: {}",
+                    recipe.max_retries,
+                    scenario
+                );
+                return Err(anyhow::anyhow!(
+                    "Max retries reached for scenario: {}",
+                    scenario
+                ));
+            }
         }
 
         // 执行恢复步骤
@@ -312,14 +317,14 @@ impl FailureHandler {
                     tracing::info!("Step {} succeeded: {}", i + 1, result);
                     // 如果是最后一步，重置重试计数
                     if i == recipe.steps.len() - 1 {
-                        retry_counts.remove(&scenario);
+                        self.reset_retry_count(&scenario).await;
                     }
                 }
                 Err(e) => {
                     tracing::error!("Step {} failed: {}", i + 1, e);
                     // 如果是升级步骤，直接返回错误
                     if matches!(step, RecoveryStep::EscalateToHuman { .. }) {
-                        retry_counts.remove(&scenario);
+                        self.reset_retry_count(&scenario).await;
                         return Err(e);
                     }
                     // 否则继续执行下一步
@@ -348,10 +353,7 @@ impl FailureHandler {
                     if router.is_connected() {
                         // Already connected — publish a test message to verify the link.
                         let test = serde_json::json!({"type": "reconnect_probe"});
-                        match router
-                            .publish_json("watchdog.probe", &test)
-                            .await
-                        {
+                        match router.publish_json("watchdog.probe", &test).await {
                             Ok(()) => {
                                 tracing::info!("NATS reconnect probe succeeded");
                                 return Ok(format!("Reconnected to {}", service));
@@ -375,16 +377,23 @@ impl FailureHandler {
             RecoveryStep::RestartProcess { agent_id } => {
                 match &self.lifecycle_manager {
                     Some(lm) => {
-                        tracing::info!("Restarting agent {}", agent_id);
+                        // If recipe uses placeholder "default", treat runtime context as agent id.
+                        let effective_agent_id = if agent_id == "default" && !context.is_empty() {
+                            context
+                        } else {
+                            agent_id.as_str()
+                        };
+                        tracing::info!("Restarting agent {}", effective_agent_id);
                         let mgr = lm.lock().await;
-                        // Best-effort stop; errors are non-fatal (agent may already be dead).
-                        let _ = mgr.stop_agent(agent_id).await;
+                        mgr.stop_agent(effective_agent_id).await.map_err(|e| {
+                            anyhow::anyhow!("RestartProcess({}) failed: {}", effective_agent_id, e)
+                        })?;
                         drop(mgr);
                         // Re-spawn is handled by the scheduler's ensure_agent_for_role()
                         // on the next scheduling tick — we just signal that the slot is free.
                         Ok(format!(
                             "Agent {} stopped; scheduler will re-spawn on next tick",
-                            agent_id
+                            effective_agent_id
                         ))
                     }
                     None => Err(anyhow::anyhow!(
@@ -445,7 +454,8 @@ impl FailureHandler {
                         let mut ok_count = 0;
                         for topic in topics {
                             match router.subscribe(topic).await {
-                                Ok(_sub) => {
+                                Ok(sub) => {
+                                    self.subscriptions.lock().await.push(sub);
                                     tracing::info!("Re-subscribed to {}", topic);
                                     ok_count += 1;
                                 }
