@@ -18,8 +18,8 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-27 20:56 (CST)
-**总体完成度**: ~95%（recovery 主链 + NATS 自动恢复 + 本地 Python 质量门禁已打通）
+**最新更新**: 2026-04-27 21:14 (CST)
+**总体完成度**: ~96%（recovery 主链 + NATS 自动恢复 + provider 切换落盘与校验已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
 
@@ -123,7 +123,11 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Hermes 异常路径测试补齐 | ✅ | 新增 `take_stdout_reader_errors_when_stdout_not_piped` 覆盖 stdout 非 pipe 场景 |
 | Web 双语 SEO 索引修复 | ✅ | `catcoding-web` 增加 canonical + hreflang（`en`/`zh-CN`/`x-default`） |
 | Web 计划书补齐 | ✅ | 新建 `catcoding-web/PROGRESS.md`，纳入“执行复盘 + 计划更新”循环 |
-| 验证 | ✅ | `cargo test` 34 passed，0 failed |
+| SwitchProvider 受控切换 | ✅ | `LLM_PROVIDERS` 白名单校验，未知 fallback 拒绝执行 |
+| Provider 状态持久化 | ✅ | 切换后写入 `.catcoding/runtime/provider_state.json`（含 previous/current/updated_at） |
+| Provider 切换可观测性 | ✅ | 切换时发布 NATS 事件 `recovery.provider`（失败降级为 warn） |
+| Recovery 测试补齐 | ✅ | 新增 provider 持久化与非法 provider 拒绝测试 |
+| 验证 | ✅ | `cargo test` 36 passed，0 failed |
 
 ### 最新完成 (2026-04-17 权限系统 + Watchdog加固 + 100%达成)
 
