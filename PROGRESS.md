@@ -18,7 +18,7 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-27 21:14 (CST)
+**最新更新**: 2026-04-27 21:21 (CST)
 **总体完成度**: ~96%（recovery 主链 + NATS 自动恢复 + provider 切换落盘与校验已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
@@ -127,6 +127,7 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Provider 状态持久化 | ✅ | 切换后写入 `.catcoding/runtime/provider_state.json`（含 previous/current/updated_at） |
 | Provider 切换可观测性 | ✅ | 切换时发布 NATS 事件 `recovery.provider`（失败降级为 warn） |
 | Recovery 测试补齐 | ✅ | 新增 provider 持久化与非法 provider 拒绝测试 |
+| Web 爬虫发现链路补齐 | ✅ | `catcoding-web` 新增 `public/robots.txt` + `public/sitemap.xml` |
 | 验证 | ✅ | `cargo test` 36 passed，0 failed |
 
 ### 最新完成 (2026-04-17 权限系统 + Watchdog加固 + 100%达成)
