@@ -18,7 +18,7 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-27 21:26 (CST)
+**最新更新**: 2026-04-27 21:28 (CST)
 **总体完成度**: ~96%（recovery 主链 + NATS 自动恢复 + provider 切换落盘与校验已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
@@ -131,6 +131,7 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Web 社交元信息补齐 | ✅ | `catcoding-web` 增加本地化 `og:*` 与 `twitter:*` 元信息 |
 | Web Lighthouse 基线完成 | ✅ | `/`=97/92/96/100，`/zh/`=96/92/96/100（性能/可访问性/最佳实践/SEO） |
 | Web sitemap 自动生成 | ✅ | `catcoding-web` 新增 `scripts/gen-sitemap.mjs`，`prebuild` 自动生成 `public/sitemap.xml` |
+| Web Lighthouse 脚本化 | ✅ | `catcoding-web` 新增 `audit:lighthouse`（`scripts/lighthouse-baseline.mjs`）可重复执行基线审计 |
 | 验证 | ✅ | `cargo test` 36 passed，0 failed |
 
 ### 最新完成 (2026-04-17 权限系统 + Watchdog加固 + 100%达成)
