@@ -18,7 +18,7 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-27 22:33 (CST)
+**最新更新**: 2026-04-28 01:00 (CST)
 **总体完成度**: ~96%（recovery 主链 + NATS 自动恢复 + provider 切换落盘与校验已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
@@ -136,6 +136,7 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Web 质量门禁升级 | ✅ | `catcoding-web` 新增 `ci:quality`，Lighthouse 阈值断言（P/A11y/BP/SEO）已落地 |
 | Web 远端 CI 接线 | ✅ | `catcoding-web` 新增 `.github/workflows/ci-quality.yml`，push/PR 自动执行质量门禁 |
 | Web 质量门禁提效 | ✅ | `ci:quality` 复用构建产物（`LH_SKIP_BUILD=1`），避免重复 build |
+| Web 首屏性能优化 | ✅ | 延迟加载 `cat-hunt.js` + 移除外链字体后，Lighthouse Performance 提升到 `/`=100、`/zh/`=100 |
 | 验证 | ✅ | `cargo test` 36 passed，0 failed |
 
 ### 最新完成 (2026-04-17 权限系统 + Watchdog加固 + 100%达成)
