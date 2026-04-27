@@ -1,7 +1,8 @@
 use anyhow::Result;
 use async_nats::Client;
 use serde::{Deserialize, Serialize};
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 /// 消息类型
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -104,10 +105,7 @@ impl MessageRouter {
     }
 
     pub fn is_connected(&self) -> bool {
-        self.client
-            .read()
-            .map(|slot| slot.is_some())
-            .unwrap_or(false)
+        self.client.try_read().map(|slot| slot.is_some()).unwrap_or(false)
     }
 
     /// Attempt to reconnect NATS and replace current client handle.
@@ -120,10 +118,7 @@ impl MessageRouter {
             .await
             .map_err(|e| anyhow::anyhow!("NATS reconnect to {} failed: {}", nats_url, e))?;
 
-        let mut slot = self
-            .client
-            .write()
-            .map_err(|_| anyhow::anyhow!("MessageRouter client lock poisoned"))?;
+        let mut slot = self.client.write().await;
         *slot = Some(client);
         tracing::info!("NATS reconnected: {}", nats_url);
         Ok(())
@@ -143,11 +138,7 @@ impl MessageRouter {
 
     /// 底层字节发送
     pub async fn publish_bytes(&self, subject: &str, payload: Vec<u8>) -> Result<()> {
-        let client = self
-            .client
-            .read()
-            .map_err(|_| anyhow::anyhow!("MessageRouter client lock poisoned"))?
-            .clone();
+        let client = self.client.read().await.clone();
         let Some(client) = client else {
             tracing::trace!(
                 "NATS offline, skip publish [{}] ({} bytes)",
@@ -172,7 +163,7 @@ impl MessageRouter {
         let client = self
             .client
             .read()
-            .map_err(|_| anyhow::anyhow!("MessageRouter client lock poisoned"))?
+            .await
             .clone()
             .ok_or_else(|| {
                 anyhow::anyhow!("NATS not connected — cannot subscribe to {}", subject)
