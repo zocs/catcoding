@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::process::Stdio;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
-use tokio::process::{Child, Command};
+use tokio::process::{Child, ChildStdout, Command};
 use tokio::sync::Mutex;
 
 use super::{AgentAdapter, AgentContext, AgentHandle, AgentOutput, HealthStatus};
@@ -67,6 +67,13 @@ impl HermesAdapter {
             std::iter::once(runner).chain(args).collect(),
         )
     }
+
+    fn take_stdout_reader(child: &mut Child) -> Result<Arc<Mutex<BufReader<ChildStdout>>>> {
+        let stdout = child.stdout.take().ok_or_else(|| {
+            anyhow::anyhow!("HermesAdapter spawn invariant broken: child stdout is not piped")
+        })?;
+        Ok(Arc::new(Mutex::new(BufReader::new(stdout))))
+    }
 }
 
 #[async_trait]
@@ -101,8 +108,7 @@ impl AgentAdapter for HermesAdapter {
             .spawn()?;
 
         let pid = child.id();
-        let stdout = child.stdout.take().unwrap();
-        let stdout_reader = Arc::new(Mutex::new(BufReader::new(stdout)));
+        let stdout_reader = Self::take_stdout_reader(&mut child)?;
 
         let agent_id = context.agent_id.clone();
 
@@ -272,6 +278,29 @@ impl AgentAdapter for HermesAdapter {
                 reason: "Agent not running".to_string(),
             }),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn take_stdout_reader_errors_when_stdout_not_piped() {
+        let mut child = Command::new("bash")
+            .arg("-lc")
+            .arg("echo hermes-test")
+            .stdin(Stdio::null())
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .spawn()
+            .expect("spawn test process");
+
+        let err = HermesAdapter::take_stdout_reader(&mut child)
+            .expect_err("should fail when stdout is not piped");
+        assert!(err.to_string().contains("stdout is not piped"));
+
+        let _ = child.wait().await;
     }
 }
 
