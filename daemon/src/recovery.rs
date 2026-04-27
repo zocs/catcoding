@@ -409,9 +409,24 @@ impl FailureHandler {
                         };
                         tracing::info!("Restarting agent {}", effective_agent_id);
                         let mut mgr = lm.lock().await;
-                        mgr.stop_agent(effective_agent_id).await.map_err(|e| {
-                            anyhow::anyhow!("RestartProcess({}) failed: {}", effective_agent_id, e)
-                        })?;
+                        match mgr.stop_agent(effective_agent_id).await {
+                            Ok(()) => {}
+                            Err(e) => {
+                                let emsg = e.to_string();
+                                if emsg.contains("Agent not found") {
+                                    tracing::warn!(
+                                        "RestartProcess({}) skipped stop: agent already gone",
+                                        effective_agent_id
+                                    );
+                                } else {
+                                    return Err(anyhow::anyhow!(
+                                        "RestartProcess({}) failed: {}",
+                                        effective_agent_id,
+                                        emsg
+                                    ));
+                                }
+                            }
+                        }
                         // Re-spawn is handled by the scheduler's ensure_agent_for_role()
                         // on the next scheduling tick — we just signal that the slot is free.
                         Ok(format!(
