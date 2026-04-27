@@ -2,7 +2,8 @@ use crate::adapter::AgentLifecycleManager;
 use crate::router::MessageRouter;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
@@ -250,17 +251,44 @@ pub struct FailureHandler {
     subscriptions: Arc<Mutex<HashMap<String, async_nats::Subscriber>>>,
     /// Current active provider marker used by SwitchProvider recovery step.
     current_provider: Arc<RwLock<Option<String>>>,
+    /// Allowed provider set for SwitchProvider validation.
+    available_providers: Arc<RwLock<HashSet<String>>>,
+    /// Persisted provider runtime state path.
+    provider_state_path: Arc<RwLock<PathBuf>>,
 }
 
 impl FailureHandler {
     pub fn new(recipe_store: Arc<RecipeStore>) -> Self {
+        let current_provider = std::env::var("LLM_PROVIDER").ok();
+        let mut available_providers: HashSet<String> = std::env::var("LLM_PROVIDERS")
+            .ok()
+            .map(|v| {
+                v.split(',')
+                    .map(|s| s.trim().to_string())
+                    .filter(|s| !s.is_empty())
+                    .collect()
+            })
+            .unwrap_or_else(|| {
+                ["default", "openai", "anthropic", "backup_provider"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect()
+            });
+        if let Some(provider) = &current_provider {
+            available_providers.insert(provider.clone());
+        }
+
         Self {
             recipe_store,
             retry_counts: Arc::new(RwLock::new(HashMap::new())),
             router: None,
             lifecycle_manager: None,
             subscriptions: Arc::new(Mutex::new(HashMap::new())),
-            current_provider: Arc::new(RwLock::new(std::env::var("LLM_PROVIDER").ok())),
+            current_provider: Arc::new(RwLock::new(current_provider)),
+            available_providers: Arc::new(RwLock::new(available_providers)),
+            provider_state_path: Arc::new(RwLock::new(PathBuf::from(
+                ".catcoding/runtime/provider_state.json",
+            ))),
         }
     }
 
@@ -273,6 +301,12 @@ impl FailureHandler {
     /// Wire the agent lifecycle manager (for RestartProcess step).
     pub fn with_lifecycle_manager(mut self, lm: Arc<Mutex<AgentLifecycleManager>>) -> Self {
         self.lifecycle_manager = Some(lm);
+        self
+    }
+
+    /// Override persisted provider state path (useful for tests).
+    pub fn with_provider_state_path(mut self, path: PathBuf) -> Self {
+        self.provider_state_path = Arc::new(RwLock::new(path));
         self
     }
 
@@ -490,9 +524,37 @@ impl FailureHandler {
                 ))
             }
             RecoveryStep::SwitchProvider { fallback } => {
-                let mut provider = self.current_provider.write().await;
-                let previous = provider.clone().unwrap_or_else(|| "default".to_string());
-                *provider = Some(fallback.clone());
+                let allowed = self.available_providers.read().await;
+                if !allowed.contains(fallback) {
+                    return Err(anyhow::anyhow!(
+                        "SwitchProvider rejected: fallback '{}' is not in allowed providers {:?}",
+                        fallback,
+                        allowed
+                    ));
+                }
+                drop(allowed);
+
+                let previous = {
+                    let mut provider = self.current_provider.write().await;
+                    let previous = provider.clone().unwrap_or_else(|| "default".to_string());
+                    *provider = Some(fallback.clone());
+                    previous
+                };
+
+                self.persist_provider_state(&previous, fallback).await?;
+
+                if let Some(ref router) = self.router {
+                    let event = serde_json::json!({
+                        "type": "provider.switched",
+                        "from": previous,
+                        "to": fallback,
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                    });
+                    if let Err(e) = router.publish_json("recovery.provider", &event).await {
+                        tracing::warn!("provider switch event publish failed: {}", e);
+                    }
+                }
+
                 tracing::warn!("RecoveryStep::SwitchProvider: {} -> {}", previous, fallback);
                 Ok(format!("Provider switched: {} -> {}", previous, fallback))
             }
@@ -549,6 +611,21 @@ impl FailureHandler {
             context.trim()
         };
         format!("{}::{}", scenario, ctx)
+    }
+
+    async fn persist_provider_state(&self, previous: &str, current: &str) -> Result<()> {
+        let path = self.provider_state_path.read().await.clone();
+        if let Some(parent) = path.parent() {
+            tokio::fs::create_dir_all(parent).await?;
+        }
+        let payload = serde_json::json!({
+            "previous": previous,
+            "current": current,
+            "updated_at": chrono::Utc::now().to_rfc3339(),
+        });
+        let bytes = serde_json::to_vec_pretty(&payload)?;
+        tokio::fs::write(&path, bytes).await?;
+        Ok(())
     }
 
     /// 重置指定上下文的重试计数
@@ -647,5 +724,63 @@ mod tests {
             .await
             .expect_err("ctx-a second retry should hit max");
         assert!(err.to_string().contains("Max retries reached"));
+    }
+
+    #[tokio::test]
+    async fn test_switch_provider_persists_state_file() {
+        let store = Arc::new(RecipeStore::new());
+        let scenario = FailureScenario::Custom("provider_switch".to_string());
+        store
+            .add_recipe(RecoveryRecipe {
+                scenario: scenario.clone(),
+                steps: vec![RecoveryStep::SwitchProvider {
+                    fallback: "backup_provider".to_string(),
+                }],
+                escalation_policy: EscalationPolicy::LogAndContinue,
+                max_retries: 1,
+                description: "provider switch test".to_string(),
+            })
+            .await;
+
+        let state_path = std::env::temp_dir().join(format!(
+            "catcoding-provider-state-{}.json",
+            uuid::Uuid::new_v4()
+        ));
+        let handler = FailureHandler::new(store).with_provider_state_path(state_path.clone());
+        handler
+            .handle_failure(scenario, "ctx-provider")
+            .await
+            .expect("switch provider should succeed");
+
+        let data = tokio::fs::read_to_string(&state_path)
+            .await
+            .expect("provider state file should exist");
+        assert!(data.contains("\"current\": \"backup_provider\""));
+
+        let _ = tokio::fs::remove_file(state_path).await;
+    }
+
+    #[tokio::test]
+    async fn test_switch_provider_rejects_unknown_fallback() {
+        let store = Arc::new(RecipeStore::new());
+        let scenario = FailureScenario::Custom("provider_reject".to_string());
+        store
+            .add_recipe(RecoveryRecipe {
+                scenario: scenario.clone(),
+                steps: vec![RecoveryStep::SwitchProvider {
+                    fallback: "not_in_registry".to_string(),
+                }],
+                escalation_policy: EscalationPolicy::LogAndContinue,
+                max_retries: 1,
+                description: "provider reject test".to_string(),
+            })
+            .await;
+
+        let handler = FailureHandler::new(store);
+        let err = handler
+            .handle_failure(scenario, "ctx-provider-reject")
+            .await
+            .expect_err("unknown fallback should be rejected");
+        assert!(err.to_string().contains("all steps failed"));
     }
 }
