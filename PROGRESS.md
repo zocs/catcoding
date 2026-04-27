@@ -18,7 +18,7 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-27 20:41 (CST)
+**最新更新**: 2026-04-27 20:56 (CST)
 **总体完成度**: ~95%（recovery 主链 + NATS 自动恢复 + 本地 Python 质量门禁已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
@@ -121,6 +121,8 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Reconnect 探针失败兜底 | ✅ | `recovery.rs` 在探针失败时强制断开并二次 `reconnect + probe`，避免卡在 stale client |
 | Hermes stdout 缺失防 panic | ✅ | `adapter/hermes.rs` 将 `child.stdout.take().unwrap()` 改为显式错误返回 |
 | Hermes 异常路径测试补齐 | ✅ | 新增 `take_stdout_reader_errors_when_stdout_not_piped` 覆盖 stdout 非 pipe 场景 |
+| Web 双语 SEO 索引修复 | ✅ | `catcoding-web` 增加 canonical + hreflang（`en`/`zh-CN`/`x-default`） |
+| Web 计划书补齐 | ✅ | 新建 `catcoding-web/PROGRESS.md`，纳入“执行复盘 + 计划更新”循环 |
 | 验证 | ✅ | `cargo test` 34 passed，0 failed |
 
 ### 最新完成 (2026-04-17 权限系统 + Watchdog加固 + 100%达成)
