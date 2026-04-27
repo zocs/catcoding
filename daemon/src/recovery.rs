@@ -246,8 +246,8 @@ pub struct FailureHandler {
     router: Option<Arc<MessageRouter>>,
     /// Optional: used by RestartProcess step
     lifecycle_manager: Option<Arc<Mutex<AgentLifecycleManager>>>,
-    /// Keep NATS subscribers alive after Resubscribe; dropping unsubscribes immediately.
-    subscriptions: Arc<Mutex<Vec<async_nats::Subscriber>>>,
+    /// Keep NATS subscribers alive after Resubscribe; keyed by topic to avoid unbounded growth.
+    subscriptions: Arc<Mutex<HashMap<String, async_nats::Subscriber>>>,
     /// Current active provider marker used by SwitchProvider recovery step.
     current_provider: Arc<RwLock<Option<String>>>,
 }
@@ -259,7 +259,7 @@ impl FailureHandler {
             retry_counts: Arc::new(RwLock::new(HashMap::new())),
             router: None,
             lifecycle_manager: None,
-            subscriptions: Arc::new(Mutex::new(Vec::new())),
+            subscriptions: Arc::new(Mutex::new(HashMap::new())),
             current_provider: Arc::new(RwLock::new(std::env::var("LLM_PROVIDER").ok())),
         }
     }
@@ -490,7 +490,8 @@ impl FailureHandler {
                         for topic in topics {
                             match router.subscribe(topic).await {
                                 Ok(sub) => {
-                                    self.subscriptions.lock().await.push(sub);
+                                    // Replace prior subscription for the same topic so we don't leak handles.
+                                    self.subscriptions.lock().await.insert(topic.clone(), sub);
                                     tracing::info!("Re-subscribed to {}", topic);
                                     ok_count += 1;
                                 }
