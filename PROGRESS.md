@@ -18,7 +18,7 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-28 01:30 (CST)
+**最新更新**: 2026-04-28 01:33 (CST)
 **总体完成度**: ~96%（recovery 主链 + NATS 自动恢复 + provider 切换落盘与校验已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
@@ -142,6 +142,7 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Web 工具链稳定化 | ✅ | `lighthouse/http-server` 固化为本地 devDeps，审计脚本改为 `npx --no-install`，减少网络波动 |
 | Web CI 失败修复 | ✅ | 修复 `CI Quality` 的 Node 版本不兼容：workflow Node 从 20 升级到 `22.12.0`（满足 Astro 要求） |
 | Web 本地阈值对齐 | ✅ | `ci:quality` 默认性能阈值从 85 提升到 90，避免“本地过宽/远端过严”口径漂移 |
+| Web CI 触发降噪 | ✅ | workflow 增加 `concurrency` + `paths-ignore: PROGRESS.md`，降低无效 run 与滥用风险 |
 | 验证 | ✅ | `cargo test` 36 passed，0 failed |
 
 ### 最新完成 (2026-04-17 权限系统 + Watchdog加固 + 100%达成)
