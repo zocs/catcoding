@@ -108,6 +108,14 @@ impl MessageRouter {
         self.client.try_read().map(|slot| slot.is_some()).unwrap_or(false)
     }
 
+    /// Mark current NATS client as disconnected.
+    pub async fn mark_disconnected(&self) {
+        let mut slot = self.client.write().await;
+        if slot.take().is_some() {
+            tracing::warn!("NATS client marked disconnected");
+        }
+    }
+
     /// Attempt to reconnect NATS and replace current client handle.
     pub async fn reconnect(&self) -> Result<()> {
         let nats_url = self
@@ -150,10 +158,18 @@ impl MessageRouter {
 
         let subject_owned: String = subject.to_string();
         let n = payload.len();
-        client
+        if let Err(e) = client
             .publish(subject_owned.clone(), payload.into())
             .await
-            .map_err(|e| anyhow::anyhow!("NATS publish to {} failed: {}", subject_owned, e))?;
+        {
+            // Connection can silently become stale; mark it disconnected so recovery can reconnect.
+            self.mark_disconnected().await;
+            return Err(anyhow::anyhow!(
+                "NATS publish to {} failed: {}",
+                subject_owned,
+                e
+            ));
+        }
         tracing::debug!("NATS publish [{}] ({} bytes)", subject_owned, n);
         Ok(())
     }

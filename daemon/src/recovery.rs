@@ -374,12 +374,25 @@ impl FailureHandler {
                                 return Ok(format!("Reconnected to {}", service));
                             }
                             Err(e) => {
-                                tracing::warn!("NATS probe publish failed: {}", e);
-                                return Err(anyhow::anyhow!(
-                                    "Reconnect({}) failed: publish probe error: {}",
-                                    service,
+                                tracing::warn!(
+                                    "NATS probe publish failed after initial reconnect check: {}",
                                     e
-                                ));
+                                );
+                                // Handle stale client case: force disconnect + one explicit reconnect retry.
+                                router.mark_disconnected().await;
+                                router.reconnect().await?;
+                                router
+                                    .publish_json("watchdog.probe", &test)
+                                    .await
+                                    .map_err(|retry_err| {
+                                        anyhow::anyhow!(
+                                            "Reconnect({}) failed after forced reconnect retry: {}",
+                                            service,
+                                            retry_err
+                                        )
+                                    })?;
+                                tracing::info!("NATS reconnect probe succeeded after forced retry");
+                                return Ok(format!("Reconnected to {} (forced retry)", service));
                             }
                         }
                     }
