@@ -18,7 +18,7 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-27 20:35 (CST)
+**最新更新**: 2026-04-27 20:41 (CST)
 **总体完成度**: ~95%（recovery 主链 + NATS 自动恢复 + 本地 Python 质量门禁已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
@@ -119,7 +119,9 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 |------|------|------|
 | NATS 假连接句柄恢复 | ✅ | `router.rs` 发布失败后执行 `mark_disconnected()`，让恢复循环可感知断线并重连 |
 | Reconnect 探针失败兜底 | ✅ | `recovery.rs` 在探针失败时强制断开并二次 `reconnect + probe`，避免卡在 stale client |
-| 验证 | ✅ | `cargo test` 33 passed，0 failed |
+| Hermes stdout 缺失防 panic | ✅ | `adapter/hermes.rs` 将 `child.stdout.take().unwrap()` 改为显式错误返回 |
+| Hermes 异常路径测试补齐 | ✅ | 新增 `take_stdout_reader_errors_when_stdout_not_piped` 覆盖 stdout 非 pipe 场景 |
+| 验证 | ✅ | `cargo test` 34 passed，0 failed |
 
 ### 最新完成 (2026-04-17 权限系统 + Watchdog加固 + 100%达成)
 
