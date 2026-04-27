@@ -18,7 +18,6 @@ import json
 import os
 import urllib.error
 import urllib.request
-from typing import Optional
 
 
 def is_available() -> bool:
@@ -79,9 +78,7 @@ def chat(
             result = json.loads(resp.read().decode("utf-8"))
     except urllib.error.HTTPError as e:
         error_body = e.read().decode("utf-8", errors="replace")
-        raise RuntimeError(
-            f"LLM API error {e.code}: {error_body[:500]}"
-        ) from e
+        raise RuntimeError(f"LLM API error {e.code}: {error_body[:500]}") from e
     except Exception as e:
         raise RuntimeError(f"LLM request failed: {e}") from e
 

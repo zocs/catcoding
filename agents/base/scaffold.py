@@ -28,10 +28,12 @@ def default_artifact_path(role: str, workdir: str, task_id: str | None) -> str:
     suffix = {
         "core_dev": ".rs",
         "frontend": ".vue",
-        "backend":  ".py",
+        "backend": ".py",
     }.get(role, ".txt")
     safe_task = (task_id or "unassigned")[:8]
-    return os.path.join(workdir, ".catcoding", "scaffold", f"{role}-{safe_task}{suffix}")
+    return os.path.join(
+        workdir, ".catcoding", "scaffold", f"{role}-{safe_task}{suffix}"
+    )
 
 
 async def scaffold_task(agent, msg, progress_steps: list[str]) -> None:
@@ -91,7 +93,9 @@ async def scaffold_task(agent, msg, progress_steps: list[str]) -> None:
         )
 
     Path(out_path).write_text(content, encoding="utf-8")
-    agent._log(f"📝 wrote {'LLM-generated' if use_llm else 'scaffold'} artifact: {out_path}")
+    agent._log(
+        f"📝 wrote {'LLM-generated' if use_llm else 'scaffold'} artifact: {out_path}"
+    )
 
     # Emit a machine-readable manifest so Review/Test agents can find it.
     manifest = {
@@ -104,7 +108,10 @@ async def scaffold_task(agent, msg, progress_steps: list[str]) -> None:
         "kind": "llm" if use_llm else "scaffold",
     }
     manifest_path = os.path.join(
-        agent.workdir, ".catcoding", "scaffold", f"{role}-{(msg.task_id or 'none')[:8]}.json"
+        agent.workdir,
+        ".catcoding",
+        "scaffold",
+        f"{role}-{(msg.task_id or 'none')[:8]}.json",
     )
     Path(manifest_path).parent.mkdir(parents=True, exist_ok=True)
     Path(manifest_path).write_text(json.dumps(manifest, indent=2, ensure_ascii=False))

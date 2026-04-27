@@ -18,7 +18,13 @@ class BackendAgent(BaseAgent):
         await scaffold_task(
             self,
             msg,
-            ["分析接口契约", "设计数据模型", "生成路由骨架", "写占位 handler", "落盘产物"],
+            [
+                "分析接口契约",
+                "设计数据模型",
+                "生成路由骨架",
+                "写占位 handler",
+                "落盘产物",
+            ],
         )
         self._log("✅ 后端骨架完成")
 
