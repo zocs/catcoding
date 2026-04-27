@@ -90,28 +90,6 @@ async fn main() -> Result<()> {
     let nats_client: Option<async_nats::Client> = match async_nats::connect(&nats_url).await {
         Ok(client) => {
             tracing::info!("Connected to NATS: {}", nats_url);
-            // Subscribe to agent heartbeats
-            let watchdog_for_heartbeat = watchdog.clone();
-            match client.subscribe("agent.heartbeat").await {
-                Ok(mut sub) => {
-                    tokio::spawn(async move {
-                        while let Some(msg) = sub.next().await {
-                            if let Ok(data) =
-                                serde_json::from_slice::<serde_json::Value>(&msg.payload)
-                            {
-                                if let Some(agent_id) =
-                                    data.get("agent_id").and_then(|v| v.as_str())
-                                {
-                                    let _ = watchdog_for_heartbeat.heartbeat(agent_id).await;
-                                }
-                            }
-                        }
-                    });
-                }
-                Err(e) => {
-                    tracing::warn!("NATS subscribe 'agent.heartbeat' failed: {}", e);
-                }
-            }
             Some(client)
         }
         Err(e) => {
@@ -131,6 +109,37 @@ async fn main() -> Result<()> {
             "offline (publishes become no-ops, subscribes error)"
         }
     );
+    // Keep heartbeat subscription alive across reconnects.
+    let router_for_heartbeat = router.clone();
+    let watchdog_for_heartbeat = watchdog.clone();
+    tokio::spawn(async move {
+        loop {
+            if !router_for_heartbeat.is_connected() {
+                tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+                continue;
+            }
+            match router_for_heartbeat.subscribe("agent.heartbeat").await {
+                Ok(mut sub) => {
+                    tracing::info!("NATS heartbeat subscription active");
+                    while let Some(msg) = sub.next().await {
+                        if let Ok(data) = serde_json::from_slice::<serde_json::Value>(&msg.payload)
+                        {
+                            if let Some(agent_id) = data.get("agent_id").and_then(|v| v.as_str()) {
+                                let _ = watchdog_for_heartbeat.heartbeat(agent_id).await;
+                            }
+                        }
+                    }
+                    tracing::warn!(
+                        "NATS heartbeat subscription ended; waiting before re-subscribe"
+                    );
+                }
+                Err(e) => {
+                    tracing::warn!("NATS subscribe 'agent.heartbeat' failed: {}", e);
+                }
+            }
+            tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+        }
+    });
 
     // Scheduler (with watchdog + router integration)
     let scheduler_config = SchedulerConfig::default();
