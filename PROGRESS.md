@@ -18,8 +18,8 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-27 12:15 (CST)
-**总体完成度**: ~92%（核心模块真实实现，graceful shutdown + recovery 主链已接通）
+**最新更新**: 2026-04-27 20:22 (CST)
+**总体完成度**: ~95%（recovery 主链 + NATS 自动恢复 + 本地 Python 质量门禁已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
 
@@ -29,13 +29,21 @@
 | Phase 2 | 多 Agent 协作 + 自进化系统 | 🟢 | ~80% | XP 已接线(api/mod.rs hook)；Agent 为 scaffold 模式(写真实文件) |
 | Phase 3 | Dashboard + 品牌 | 🟢 | ~95% | CatSprite/Office/XpBadge/Kitchen/Team 全部就绪 |
 | Phase 4 | 去耦合 + 发布 | 🟢 | ~90% | Adapter/Hermes 完整；Claude/Codex 有骨架；install.sh 就绪 |
-| Phase 5 | 执行链 + TDD | 🟡 | ~85% | 31 单元测试全过；graceful shutdown 已落地；watchdog→recovery 已接线 |
+| Phase 5 | 执行链 + TDD | 🟢 | ~92% | recovery 执行链可用；`cargo test` + python pytest/ruff + web check/build 全通过 |
 
-### 🔴 剩余差距（2026-04-27 更新）
+### 🔴 剩余差距（2026-04-27 夜间更新）
 
-1. **Recovery 深水区补全** — `SwitchProvider` 仍未落地 provider registry；NATS 断线后缺自动重连
-2. **Python Agent 测试链路** — 当前环境缺 `pytest/ruff`，CI 外无法本地跑 python 质量门禁
-3. **CHANGELOG 路线图** — API 认证/限流/更多 Adapter/K8s (0.3.0+)
+1. **Provider 切换仍是内存态** — `SwitchProvider` 仅更新 `current_provider`，尚未接入真实 provider registry/路由
+2. **Recovery 集成测试不足** — 缺少“断线→重连→重订阅→消费恢复”的端到端自动化验证
+3. **0.3.0 路线图未推进** — API 认证/限流/更多 Adapter/K8s 仍在 backlog
+
+### 🔁 每轮执行复盘 + 计划书更新（强制环节）
+
+每轮自动推进都必须执行以下步骤（新增，2026-04-27）：
+1. 复盘本轮执行：确认已完成的 code review、修复、功能项与验证命令结果
+2. 对齐项目计划：检查 `PROGRESS.md`/`PROCEED.md` 与真实提交是否一致
+3. 更新计划文档：刷新完成度、剩余差距、下一轮候选任务
+4. Git 单独提交：文档更新以独立 commit 落库，便于回溯
 
 ### ✅ 已完成（PROGRESS.md 曾标注未完成，实际已落地）
 
@@ -89,6 +97,21 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Resubscribe 持久订阅修复 | ✅ | 保存 `Subscriber` 句柄，避免函数返回即自动退订 |
 | Lifecycle 句柄一致性 | ✅ | `stop_agent`/`stop_all` 清理 `handles`，避免 stale handle |
 | 验证 | ✅ | `cargo test` 31 passed；`cargo clippy` 仅保留既有 1 条警告 |
+
+### 最新推进 (2026-04-27 夜间自动推进)
+
+| 任务 | 状态 | 说明 |
+|------|------|------|
+| Retry 计数按场景+上下文隔离 | ✅ | `retry_key = scenario::context`，避免不同 agent 相互污染重试次数 |
+| NATS 重连 + Provider 可执行切换 | ✅ | `RecoveryStep::Reconnect` 真连通；`SwitchProvider` 从占位改为可执行状态切换 |
+| Recovery 成功语义修复 | ✅ | 全步骤失败时返回错误，不再“假成功” |
+| Python 本地质量门禁打通 | ✅ | 建 `.venv` + `uv pip` 安装 `pytest/ruff`，修复 lint/format 并通过测试 |
+| 心跳订阅跨重连持续化 | ✅ | `main.rs` 中心跳订阅循环常驻，断线后自动重订阅 |
+| Restart 对已停止 agent 容错 | ✅ | `RestartProcess` 遇 `Agent not found` 不再中断恢复流程 |
+| Router 客户端状态并发优化 | ✅ | `router.rs` 改用 `tokio::sync::RwLock`，移除阻塞锁 |
+| 恢复重订阅句柄去重 | ✅ | `subscriptions: HashMap<topic, Subscriber>`，同 topic 覆盖旧句柄 |
+| Shutdown 信号安装失败容错 | ✅ | `shutdown_signal()` 失败时记录错误并挂起等待，避免 panic |
+| Web 质量门禁 + 生产依赖审计 | ✅ | `catcoding-web` 新增 `npm run check/ci`；升级 Astro，`npm audit --omit=dev` 为 0 |
 
 ### 最新完成 (2026-04-17 权限系统 + Watchdog加固 + 100%达成)
 
