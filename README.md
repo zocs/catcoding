@@ -94,6 +94,20 @@ cargo test               # Run tests
 make ci                  # Full CI pipeline (lint + test + build)
 ```
 
+## 🔁 Autonomous Execution Loop
+
+When running in autonomous mode, each cycle follows:
+
+1. Code review
+2. Minimal fix/feature implementation
+3. Verification (`cargo test` / related checks)
+4. Progress sync (`PROGRESS.md` and `PROCEED.md`)
+5. Small git commit
+
+The execution and next-step status are tracked in:
+- `PROGRESS.md` (cross-repo master status)
+- `PROCEED.md` (dashboard and cycle log)
+
 ## 📁 Project Structure
 
 ```

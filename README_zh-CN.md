@@ -94,6 +94,20 @@ cargo test               # 运行测试
 make ci                  # 完整 CI 流水线
 ```
 
+## 🔁 自动推进执行环
+
+自动推进模式下，每轮固定执行：
+
+1. code review
+2. 最小 fix/feature 落地
+3. 验证（`cargo test` / 对应质量检查）
+4. 进度同步（更新 `PROGRESS.md` 与 `PROCEED.md`）
+5. 小步 git 提交
+
+进度记录位置：
+- `PROGRESS.md`：跨仓库主进度
+- `PROCEED.md`：dashboard 与每轮执行日志
+
 ## 📝 License
 
 [MIT License](LICENSE)

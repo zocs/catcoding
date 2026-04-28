@@ -18,7 +18,7 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-28 09:13 (CST)
+**最新更新**: 2026-04-28 09:24 (CST)
 **总体完成度**: ~96%（recovery 主链 + NATS 自动恢复 + provider 切换落盘与校验已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
@@ -154,6 +154,7 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Web CI 超时根因修复 | ✅ | 修复审计结束后 `http-server` 子进程残留：新增 `SIGTERM -> SIGKILL` 回收，避免步骤悬挂到超时 |
 | Web CI Node24 前瞻兼容 | ✅ | workflow 增加 `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24=true`，规避 GitHub Node20 actions 退役窗口风险 |
 | Web Actions 主版本升级 | ✅ | `actions/checkout/setup-node` 从 v4 升级到 v6，移除 Node20 目标弃用链路 |
+| README 进度同步补齐 | ✅ | `catcoding` 中英 README 增加自动推进执行环说明；`catcoding-web` 新增 README 与质量门禁说明 |
 | 计划书同步环节 | ✅ | 两仓 `PROGRESS.md` 已完成本轮复盘与“下一轮候选”更新，进入下一轮自动循环 |
 | 验证 | ✅ | `cargo test` 36 passed，0 failed |
 
