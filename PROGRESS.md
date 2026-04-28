@@ -18,7 +18,7 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-28 08:25 (CST)
+**最新更新**: 2026-04-28 08:35 (CST)
 **总体完成度**: ~96%（recovery 主链 + NATS 自动恢复 + provider 切换落盘与校验已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
@@ -146,6 +146,7 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Web CI 缓存稳态优化 | ✅ | `setup-node` 增加 `cache-dependency-path: package-lock.json`，提升缓存命中稳定性 |
 | Web CI 卡顿防护 | ✅ | Lighthouse 脚本增加进程超时与 `max-wait-for-load`，workflow 步骤增加 `timeout-minutes: 8` |
 | Web 性能基线稳态化 | ✅ | 自动化浏览器下禁用 `cat-hunt` 动画注入，修复 CI 中 `/` 性能分数偶发抖动 |
+| Web 超时硬杀兜底 | ✅ | Lighthouse 子进程超时后执行 `SIGTERM->SIGKILL` 并立即失败返回，避免僵死阻塞 |
 | 验证 | ✅ | `cargo test` 36 passed，0 failed |
 
 ### 最新完成 (2026-04-17 权限系统 + Watchdog加固 + 100%达成)
