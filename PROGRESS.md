@@ -18,7 +18,7 @@
 
 **阶段**: 诚实化进度 + 剩余功能补全
 **开始时间**: 2026-04-16 04:38 (CST)
-**最新更新**: 2026-04-28 08:51 (CST)
+**最新更新**: 2026-04-28 09:02 (CST)
 **总体完成度**: ~96%（recovery 主链 + NATS 自动恢复 + provider 切换落盘与校验已打通）
 
 ### 📊 Phase 完成状态（诚实评估，2026-04-19 修正）
@@ -151,6 +151,7 @@ Claude Code 对整个项目做了一次全面 Code Review（发现 20+ 问题）
 | Web CI 止血阈值 | ✅ | 远端 `master` 性能阈值临时调到 80，先恢复 CI 稳定，后续按样本逐步回提 |
 | Web CI 重测稳态化 | ✅ | `lighthouse-baseline` 增加预热+重测（最多3次，任一达标即通过），并输出 attempts 诊断 |
 | Web workflow 引擎对齐 | ✅ | `ci-quality.yml` 升级 Node 到 `22.19.0`，并显式传入 `LH_RETRIES/LH_WARMUP` |
+| Web CI 超时根因修复 | ✅ | 修复审计结束后 `http-server` 子进程残留：新增 `SIGTERM -> SIGKILL` 回收，避免步骤悬挂到超时 |
 | 计划书同步环节 | ✅ | 两仓 `PROGRESS.md` 已完成本轮复盘与“下一轮候选”更新，进入下一轮自动循环 |
 | 验证 | ✅ | `cargo test` 36 passed，0 failed |
 
